@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J.A.R.V.I.S. · виджет</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --c:#3ff0ff; --c2:#a6fbff; --cd:rgba(63,240,255,.18); --cm:rgba(63,240,255,.45);
+  --emo:#3ff0ff; --amber:#ffb347; --red:#ff3d5a; --green:#3dffb0; --muted:#6d93a6;
+  --f-num:'Orbitron','Russo One',ui-monospace,monospace; --f-head:'Russo One','Exo 2',sans-serif;
+  --f-text:'Exo 2',-apple-system,sans-serif; --f-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:transparent;overflow:hidden;user-select:none;-webkit-user-select:none;cursor:default}
+body{font-family:var(--f-text);color:#d6f6ff;-webkit-font-smoothing:antialiased;padding:6px}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+.card{position:relative;width:100%;height:100%;overflow:hidden;
+  background:linear-gradient(165deg,rgba(8,30,46,.86),rgba(2,10,18,.84));border:1px solid var(--cd);
+  clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px));
+  animation:on .7s cubic-bezier(.2,.8,.2,1)}
+@keyframes on{0%{opacity:0;filter:blur(8px) brightness(2)}100%{opacity:1;filter:none}}
+.card::before,.card::after{content:"";position:absolute;width:20px;height:20px;border-color:var(--c);border-style:solid;filter:drop-shadow(0 0 5px var(--c));pointer-events:none;z-index:3}
+.card::before{top:0;left:0;border-width:2px 0 0 2px}
+.card::after{bottom:0;right:0;border-width:0 2px 2px 0}
+.grid{position:absolute;inset:0;opacity:.5;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(63,240,255,.04) 0 1px,transparent 1px 22px),repeating-linear-gradient(90deg,rgba(63,240,255,.04) 0 1px,transparent 1px 22px)}
+.glow{position:absolute;left:50%;top:150px;width:300px;height:300px;margin:-150px 0 0 -150px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,color-mix(in srgb,var(--emo) 22%,transparent),transparent 65%);transition:background 1s}
+.sl{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);z-index:4}
+
+.hd{position:relative;height:34px;display:flex;align-items:center;gap:8px;padding:0 10px 0 14px;border-bottom:1px solid var(--cd);cursor:grab;z-index:2}
+.hd:active{cursor:grabbing}
+.hd svg.lg{width:18px;height:18px;flex:none}
+.hd .t{font-family:var(--f-num);font-weight:900;font-size:12px;letter-spacing:.32em;color:var(--c);text-shadow:0 0 8px var(--c);flex:1}
+.ib{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:1px solid transparent;transition:.15s}
+.ib svg{width:13px;height:13px;stroke:var(--c);fill:none;stroke-width:1.8}
+.ib:hover{border-color:var(--cm);background:rgba(63,240,255,.1)}
+.ib.on{border-color:var(--c);background:rgba(63,240,255,.16)}
+.ib.off svg{stroke:var(--muted)}
+
+.top{position:relative;display:flex;align-items:center;gap:6px;padding:8px 12px 0;z-index:2}
+#reactor{position:relative;width:170px;height:170px;flex:none;cursor:pointer}
+#reactor svg,#wave{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.spin{animation:spin 20s linear infinite} .spin-r{animation:spin 32s linear infinite reverse} .spin-f{animation:spin 7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.core{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.core .sc{font-family:var(--f-num);font-weight:900;font-size:40px;color:#fff;line-height:1;text-shadow:0 0 12px var(--hc,var(--c)),0 0 26px var(--hc,var(--c))}
+.core .l{font-family:var(--f-mono);font-size:8px;letter-spacing:.24em;color:var(--hc,var(--c));margin-top:4px}
+#reactor:hover .core .sc{transform:scale(1.06)}
+.side{flex:1;min-width:0;text-align:right}
+.clock{font-family:var(--f-num);font-size:30px;font-weight:700;color:#fff;text-shadow:0 0 12px var(--c);letter-spacing:.03em}
+.date{font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-top:2px}
+.wx{margin-top:10px;font-family:var(--f-num);font-size:18px;color:#fff}
+.wx small{display:block;font-family:var(--f-text);font-size:10.5px;color:var(--muted);margin-top:2px}
+.emo{margin-top:10px;display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:9px;letter-spacing:.18em;color:var(--emo)}
+.emo i{width:8px;height:8px;border-radius:50%;background:var(--emo);box-shadow:0 0 8px var(--emo);animation:br 2.4s infinite}
+@keyframes br{50%{opacity:.5;transform:scale(.8)}}
+
+.rings{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:6px 10px 0;z-index:2}
+.rg{text-align:center}
+.rg .r{width:66px;height:66px;margin:0 auto}
+.rg .k{font-family:var(--f-head);font-size:9px;letter-spacing:.2em;color:var(--c);margin-top:1px}
+.ring-svg{width:100%;height:100%;overflow:visible}
+.ring-num{font-family:var(--f-num);font-weight:700;font-size:17px;fill:#fff}
+.ring-unit{display:none}
+.ring-v{transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1),stroke .4s}
+.ring-spin{animation:spin 12s linear infinite}
+.ring-ticks{display:none}
+
+.net{position:relative;margin:8px 12px 0;padding:6px 8px;border:1px solid var(--cd);display:flex;align-items:center;gap:8px;z-index:2}
+.net .v{font-family:var(--f-mono);font-size:10.5px;white-space:nowrap}
+.net canvas{flex:1;height:26px;min-width:0}
+.pills{position:relative;display:flex;gap:6px;margin:6px 12px 0;z-index:2}
+.pill{flex:1;display:flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid var(--cd);font-family:var(--f-mono);font-size:9.5px;letter-spacing:.08em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+.pill.ok{color:var(--green)} .pill.ok i{background:var(--green);box-shadow:0 0 8px var(--green)}
+.pill.bad{color:var(--red);border-color:rgba(255,61,90,.4)} .pill.bad i{background:var(--red);box-shadow:0 0 8px var(--red)}
+.pill.warn{color:var(--amber);border-color:rgba(255,179,71,.4)} .pill.warn i{background:var(--amber)}
+
+.say{position:relative;margin:8px 12px 0;padding:8px 10px;border-left:2px solid var(--emo);background:linear-gradient(90deg,color-mix(in srgb,var(--emo) 9%,transparent),transparent);z-index:2;min-height:56px}
+.say .w{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.24em;color:var(--muted);display:flex;align-items:center;gap:6px}
+.say .w b{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.say .w.on b{background:var(--c);box-shadow:0 0 6px var(--c);animation:br 1.4s infinite}
+.say .w.wake b{background:#fff;animation:br .4s infinite}
+.say .w.off b{background:var(--red)}
+.say .tx{font-size:12px;line-height:1.38;color:#fff;margin-top:3px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.bars{position:absolute;right:8px;top:8px;display:flex;gap:2px;align-items:center;height:14px}
+.bars i{width:2px;height:3px;background:var(--emo);transition:height .07s}
+.foot{position:relative;display:flex;justify-content:space-between;align-items:center;margin:8px 12px 0;font-family:var(--f-mono);font-size:9.5px;color:var(--muted);z-index:2}
+.foot b{color:var(--c2);font-weight:400}
+.cmd{position:relative;margin:7px 12px 0;display:flex;gap:6px;z-index:2}
+.cmd input{flex:1;min-width:0;background:rgba(63,240,255,.05);border:1px solid var(--cd);padding:6px 9px;font-family:var(--f-mono);font-size:11px;color:#fff;outline:none;user-select:text;-webkit-user-select:text}
+.cmd input:focus{border-color:var(--c)}
+.cmd input::placeholder{color:rgba(109,147,166,.75)}
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="grid"></div><div class="glow"></div><div class="sl"></div>
+  <div class="hd" id="drag">
+    <svg class="lg" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#3ff0ff" stroke-width="1.4" stroke-dasharray="3 2"/><circle cx="10" cy="10" r="3.4" fill="var(--emo)"/></svg>
+    <span class="t">J.A.R.V.I.S.</span>
+    <button class="ib" id="bMic" title="Микрофон"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button class="ib" id="bPin" title="Поверх всех окон"><svg viewBox="0 0 24 24"><path d="M9 3h6l-1 6 4 4H6l4-4zM12 13v8"/></svg></button>
+    <button class="ib" id="bFull" title="Развернуть дашборд"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="ib" id="bHide" title="Скрыть виджет"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+
+  <div class="top">
+    <div id="reactor" title="Развернуть дашборд">
+      <canvas id="wave" width="340" height="340"></canvas>
+      <svg viewBox="0 0 170 170">
+        <circle cx="85" cy="85" r="82" fill="none" stroke="var(--c)" stroke-opacity=".35" stroke-dasharray="1.5 5" class="spin-r" style="transform-origin:85px 85px"/>
+        <circle cx="85" cy="85" r="70" fill="none" stroke="rgba(63,240,255,.1)" stroke-width="6"/>
+        <circle id="arc" cx="85" cy="85" r="70" fill="none" stroke="var(--hc,var(--c))" stroke-width="6" stroke-linecap="round" transform="rotate(-90 85 85)"
+          style="transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 0 6px var(--hc,var(--c)))"/>
+        <circle cx="85" cy="85" r="58" fill="none" stroke="var(--c)" stroke-opacity=".5" stroke-width="2.5" stroke-dasharray="26 7 4 7" class="spin" style="transform-origin:85px 85px"/>
+        <g class="spin-f" style="transform-origin:85px 85px" id="coils"></g>
+        <circle cx="85" cy="85" r="40" fill="rgba(0,10,18,.85)" stroke="var(--c)" stroke-opacity=".55"/>
+        <circle id="cg" cx="85" cy="85" r="36" fill="var(--emo)" opacity=".12"/>
+      </svg>
+      <div class="core"><div class="sc" id="score">--</div><div class="l" id="scoreL">ИНДЕКС</div></div>
+    </div>
+    <div class="side">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date"></div>
+      <div class="wx" id="wx"></div>
+      <div class="emo"><i></i><span id="emoL">СПОКОЕН</span></div>
+    </div>
+  </div>
+
+  <div class="rings">
+    <div class="rg"><div class="r" id="rCpu"></div><div class="k">ЦП</div></div>
+    <div class="rg"><div class="r" id="rGpu"></div><div class="k">ГРАФИКА</div></div>
+    <div class="rg"><div class="r" id="rMem"></div><div class="k">ПАМЯТЬ</div></div>
+    <div class="rg"><div class="r" id="rDisk"></div><div class="k">ДИСК</div></div>
+  </div>
+
+  <div class="net">
+    <div class="v"><span style="color:#3ff0ff">↓</span> <b id="nd">—</b><br><span style="color:#ff6bd6">↑</span> <b id="nu">—</b></div>
+    <canvas id="netc"></canvas>
+  </div>
+  <div class="pills">
+    <div class="pill" id="pVpn"><i></i><span>VPN</span></div>
+    <div class="pill" id="pWarn"><i></i><span>—</span></div>
+  </div>
+
+  <div class="say">
+    <div class="bars" id="bars"></div>
+    <div class="w" id="vw"><b></b><span id="vwT">ГОЛОСОВОЙ КАНАЛ</span></div>
+    <div class="tx" id="sayT">Скажи «Джарвис» — я на связи.</div>
+  </div>
+  <div class="cmd"><input id="cmd" placeholder="Команда Джарвису…" autocomplete="off" spellcheck="false"></div>
+  <div class="foot"><span id="fl">—</span><span>⌥⌘J — <b>дашборд</b></span></div>
+</div>
+
+<script src="/assets/hud.js"></script>
+<script src="/assets/theme.js"></script>
+<script>
+const { $, esc, fmtRate } = HUD;
+const S = HUD.sound;
+let voiceOn = true, pinned = false;
+
+/* часы */
+function clock() {
+  const n = new Date();
+  $('clock').textContent = n.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  $('date').textContent = n.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' });
+}
+setInterval(clock, 1000); clock();
+
+/* реактор */
+(function () {
+  let c = '';
+  for (let i = 0; i < 8; i++) c += `<rect x="81" y="30" width="8" height="10" rx="1" transform="rotate(${i * 45} 85 85)" fill="rgba(63,240,255,.15)" stroke="#3ff0ff" stroke-opacity=".7"/>`;
+  $('coils').innerHTML = c;
+  const C = 2 * Math.PI * 70; $('arc').style.strokeDasharray = C; $('arc').style.strokeDashoffset = C;
+})();
+let level = 0, levelT = 0;
+const bars = $('bars'); for (let i = 0; i < 10; i++) bars.appendChild(document.createElement('i'));
+window.jarvisLevel = v => { level = Math.max(0, Math.min(1, v)); levelT = performance.now(); };
+(function () {
+  const cv = $('wave'), ctx = cv.getContext('2d'), W = cv.width, cx = W / 2;
+  let sm = 0, t = 0; const N = 64, hist = new Array(N).fill(0);
+  (function frame() {
+    t++; if (performance.now() - levelT > 400) level *= .9;
+    sm += (level - sm) * .35; hist.push(sm); hist.shift();
+    ctx.clearRect(0, 0, W, W);
+    const col = getComputedStyle(document.documentElement).getPropertyValue('--emo').trim();
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.shadowColor = col; ctx.shadowBlur = 8;
+    for (let i = 0; i < N; i++) {
+      const a = i / N * Math.PI * 2, v = Math.max((Math.sin(t / 25 + i) + 1) * .02, hist[(i * 5) % N] * (.6 + .4 * Math.sin(i * 1.3 + t / 5)));
+      const r1 = 150, r2 = r1 + 6 + v * 26;
+      ctx.globalAlpha = .2 + v * .8;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cx + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cx + Math.sin(a) * r2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    $('cg').setAttribute('opacity', (.12 + sm * .6).toFixed(3));
+    const bs = bars.children; for (let i = 0; i < bs.length; i++) bs[i].style.height = (3 + sm * 11 * Math.abs(Math.sin(t / 5 + i))) + 'px';
+    requestAnimationFrame(frame);
+  })();
+})();
+
+HUD.ring($('rCpu'), { r: 24, sw: 4, small: true }); HUD.ring($('rGpu'), { r: 24, sw: 4, small: true });
+HUD.ring($('rMem'), { r: 24, sw: 4, small: true }); HUD.ring($('rDisk'), { r: 24, sw: 4, small: true });
+
+let lastSay = 0;
+function render(s) {
+  const x = s.x || {}, J = s.jarvis || {};
+  const sc = s.score, hc = sc >= 80 ? '#3ff0ff' : sc >= 55 ? '#ffb347' : '#ff3d5a';
+  document.documentElement.style.setProperty('--hc', hc);
+  HUD.tween($('score'), sc);
+  $('scoreL').textContent = sc >= 80 ? 'В НОРМЕ' : sc >= 55 ? 'ВНИМАНИЕ' : 'КРИТИЧНО';
+  $('arc').style.strokeDashoffset = 2 * Math.PI * 70 * (1 - sc / 100);
+  if (J.emotion && performance.now() - lastSay > 6000) { HUD.setEmotion(J.emotion); $('emoL').textContent = HUD.EMO[J.emotion] ? HUD.EMO[J.emotion][1] : ''; }
+  if (s.cpu) { const l = 100 - s.cpu.idle; HUD.setRing($('rCpu'), l, Math.round(l), HUD.levelColor(l, 60, 85)); }
+  if (x.gpu) HUD.setRing($('rGpu'), x.gpu.util, x.gpu.util, HUD.levelColor(x.gpu.util, 70, 90));
+  if (s.mem) { const f = s.pressure_free != null ? s.pressure_free : 50, u = 100 - f; HUD.setRing($('rMem'), u, u, s.mem.level >= 4 ? 'var(--red)' : s.mem.level === 2 ? 'var(--amber)' : 'var(--c)'); }
+  if (s.disk) { const p = s.disk.used / s.disk.total * 100; HUD.setRing($('rDisk'), p, Math.round(p), HUD.levelColor(p, 85, 90)); }
+  $('nd').textContent = fmtRate(s.net.down); $('nu').textContent = fmtRate(s.net.up);
+  HUD.area($('netc'), [{ data: s.net_hist.map(q => q[0]), color: '#3ff0ff', fill: 'rgba(63,240,255,.2)', width: 1.4 },
+    { data: s.net_hist.map(q => q[1]), color: '#ff6bd6', width: 1.2 }], { grid: false, n: 60 });
+  const v = s.vpn || {};
+  const pv = $('pVpn');
+  if (x.online === false) { pv.className = 'pill bad'; pv.querySelector('span').textContent = 'НЕТ ИНТЕРНЕТА'; }
+  else if (v.installed) { pv.className = 'pill ' + (v.on ? 'ok' : 'bad'); pv.querySelector('span').textContent = v.on ? 'VPN · ' + (v.server || '').replace('⚡️', '').trim() : 'VPN ВЫКЛЮЧЕН'; }
+  else { pv.className = 'pill ok'; pv.querySelector('span').textContent = 'СЕТЬ В ПОРЯДКЕ'; }
+  const warns = s.recs.filter(r => r.level === 'crit' || r.level === 'warn');
+  const pw = $('pWarn');
+  pw.className = 'pill ' + (warns.some(r => r.level === 'crit') ? 'bad' : warns.length ? 'warn' : 'ok');
+  pw.querySelector('span').textContent = warns.length ? warns[0].title : 'ВСЕ СИСТЕМЫ В НОРМЕ';
+  pw.title = warns.length ? warns[0].title + ' — ' + warns[0].text : '';
+  const w = x.weather;
+  $('wx').innerHTML = w ? `${w.temp > 0 ? '+' : ''}${w.temp}°<small>${esc(w.desc)}</small>` : '';
+  let fl = '';
+  if (J.timer) fl = '⏱ ' + Math.max(0, Math.round((J.timer.end - Date.now() / 1000) / 60)) + ' мин · ' + (J.timer.project || 'таймер');
+  else if (J.reminder) fl = '⏰ ' + new Date(J.reminder.at * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + ' · ' + J.reminder.text;
+  else fl = 'сегодня сказано: ' + (J.said_today || 0);
+  $('fl').textContent = fl;
+  const conv = (J.convo || []).filter(m => m.who === 'jarvis');
+  if (conv.length && performance.now() - lastSay > 12000) {
+    const m = conv[conv.length - 1];
+    if ($('sayT').dataset.t !== String(m.t)) { $('sayT').dataset.t = m.t; $('sayT').textContent = m.text; }
+  }
+}
+
+async function poll() {
+  try { render(await HUD.get('/api/stats')); } catch (e) {}
+  setTimeout(poll, 2000);
+}
+
+/* голос */
+window.jarvisVoice = (state, text) => {
+  const w = $('vw'); w.classList.remove('on', 'off', 'wake'); w.classList.add(state === 'off' ? 'off' : 'on');
+  $('vwT').textContent = state === 'off' ? (/подключ/.test(text || '') ? 'НЕТ МИКРОФОНА · ПИШИ НИЖЕ' : 'МИКРОФОН ВЫКЛЮЧЕН') : 'СЛУШАЮ';
+  voiceOn = state !== 'off'; $('bMic').classList.toggle('off', !voiceOn);
+};
+window.jarvisWake = () => { $('vw').classList.add('wake', 'on'); $('vwT').textContent = 'НА СВЯЗИ'; S.wake(); setTimeout(() => $('vw').classList.remove('wake'), 8000); };
+window.jarvisSays = (t, e) => {
+  lastSay = performance.now();
+  if (e) { HUD.setEmotion(e); $('emoL').textContent = HUD.EMO[e] ? HUD.EMO[e][1] : ''; }
+  HUD.type($('sayT'), t); $('vwT').textContent = 'ГОВОРИТ';
+};
+window.jarvisHeard = t => { $('vwT').textContent = 'УСЛЫШАЛ: ' + String(t).toUpperCase().slice(0, 30); };
+window.jarvisUI = ui => { if (ui && ui.flash) S.shutter(); };
+window.jarvisPin = on => { pinned = !!on; $('bPin').classList.toggle('on', pinned); };
+window.jarvisMode = () => { const c = $('card'); c.style.animation = 'none'; void c.offsetWidth; c.style.animation = ''; };
+
+$('reactor').addEventListener('click', () => { S.open(); HUD.send('expand'); });
+$('bFull').addEventListener('click', () => { S.open(); HUD.send('expand'); });
+$('bHide').addEventListener('click', () => { S.close(); HUD.send('widget:hide'); });
+$('bPin').addEventListener('click', () => { S.click(); pinned = !pinned; $('bPin').classList.toggle('on', pinned); HUD.send('widget:pin:' + (pinned ? '1' : '0')); });
+$('bMic').addEventListener('click', () => { S.click(); voiceOn = !voiceOn; HUD.send(voiceOn ? 'voice:on' : 'voice:off'); $('bMic').classList.toggle('off', !voiceOn); });
+$('cmd').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { const t = $('cmd').value.trim(); if (!t) return; $('cmd').value = ''; S.blip(); HUD.command(t); }
+  e.stopPropagation();
+});
+/* перетаскивание за шапку — нативно (окно двигает приложение) */
+$('drag').addEventListener('mousedown', e => { if (e.target.closest('button')) return; HUD.send('widget:drag'); });
+
+HUD.setEmotion('calm');
+poll();
+</script>
+</body>
+</html>

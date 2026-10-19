@@ -1,0 +1,6 @@
+#!/bin/bash
+# Сказать что-нибудь голосом через запущенный JARVIS:  ./jarvis-say "Сборка завершена"
+TOKEN=$(cat "$HOME/Library/Application Support/JARVIS/token" 2>/dev/null) || { echo "JARVIS не запущен"; exit 1; }
+BODY=$(python3 -c 'import json,sys; print(json.dumps({"text": " ".join(sys.argv[1:])}))' "$@")
+curl -s -X POST http://127.0.0.1:7777/api/ext/say -H "X-Jarvis-Token: $TOKEN" -H 'Content-Type: application/json' -d "$BODY"
+echo

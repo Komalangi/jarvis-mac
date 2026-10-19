@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+secrets*
+*.wav
+_бэкап_до_v3/
+.claude/

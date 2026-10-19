@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>J.A.R.V.I.S.</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+:root{
+  --c:#3ff0ff; --c2:#a6fbff; --cd:rgba(63,240,255,.16); --cm:rgba(63,240,255,.42);
+  --emo:#3ff0ff; --amber:#ffb347; --red:#ff3d5a; --green:#3dffb0; --gold:#ffd166; --mag:#ff6bd6; --violet:#b98bff;
+  --bg:#01050b; --panel:rgba(5,20,32,.58); --text:#d6f6ff; --muted:#6d93a6;
+  --f-num:'Orbitron','Russo One','SF Mono',ui-monospace,monospace;
+  --f-head:'Russo One','Exo 2',sans-serif;
+  --f-text:'Exo 2',-apple-system,'Helvetica Neue',sans-serif;
+  --f-mono:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+  --cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cg fill='none' stroke='%233ff0ff' stroke-width='1.4'%3E%3Ccircle cx='16' cy='16' r='7' stroke-opacity='.8'/%3E%3Cpath d='M16 2v8M16 22v8M2 16h8M22 16h8'/%3E%3C/g%3E%3Ccircle cx='16' cy='16' r='1.6' fill='%23a6fbff'/%3E%3C/svg%3E") 16 16, crosshair;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--f-text);-webkit-font-smoothing:antialiased;cursor:var(--cursor);user-select:none;-webkit-user-select:none}
+button,input,select{font:inherit;color:inherit;cursor:var(--cursor)}
+input{user-select:text;-webkit-user-select:text}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+.backdrop{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+   radial-gradient(ellipse 60% 55% at 50% 42%, color-mix(in srgb,var(--emo) 14%,transparent), transparent 70%),
+   radial-gradient(ellipse at 10% 100%, rgba(0,90,255,.10), transparent 55%),
+   radial-gradient(ellipse at 95% 0%, rgba(255,107,214,.06), transparent 50%);
+  transition:background 1.2s}
+.hex{position:fixed;inset:-50%;z-index:0;pointer-events:none;opacity:.07;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97'%3E%3Cpath d='M28 0l28 16v32L28 64 0 48V16z M28 64v33' fill='none' stroke='%233ff0ff' stroke-width='1'/%3E%3C/svg%3E");
+  animation:hexdrift 90s linear infinite}
+@keyframes hexdrift{to{transform:translate(56px,97px)}}
+.scanlines{position:fixed;inset:0;z-index:60;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
+.vignette{position:fixed;inset:0;z-index:59;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.65))}
+.sweep{position:fixed;left:0;right:0;height:180px;top:-180px;z-index:58;pointer-events:none;
+  background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--emo) 7%,transparent),transparent);animation:sweep 9s linear infinite}
+@keyframes sweep{to{top:100%}}
+
+/* ── сцена 1920×1080, масштабируется под экран ── */
+#stage{position:fixed;inset:0;z-index:2;perspective:2400px;display:flex;align-items:center;justify-content:center}
+#hud{position:relative;width:1920px;height:1080px;flex:none;transition:transform .25s ease-out, filter .6s, opacity .6s}
+#hud.materialize{animation:mat .9s cubic-bezier(.2,.8,.2,1)}
+@keyframes mat{0%{opacity:0;filter:blur(14px) brightness(2.2)}40%{opacity:.7}100%{opacity:1;filter:none}}
+#hud.dematerialize{opacity:0;filter:blur(12px) brightness(2)}
+.abs{position:absolute}
+
+/* ── панели ── */
+.panel{position:absolute;background:linear-gradient(160deg,rgba(10,34,52,.78),rgba(3,14,24,.72));border:1px solid var(--cd);
+  padding:14px 16px 12px;
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));
+  transition:border-color .3s, box-shadow .3s;animation:pin .8s cubic-bezier(.2,.8,.2,1) both}
+.panel::before,.panel::after{content:"";position:absolute;width:16px;height:16px;border-color:var(--c);border-style:solid;pointer-events:none;filter:drop-shadow(0 0 4px var(--c))}
+.panel::before{top:0;left:0;border-width:2px 0 0 2px}
+.panel::after{bottom:0;right:0;border-width:0 2px 2px 0}
+.panel:hover{border-color:var(--cm)}
+.panel .glint{position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,transparent 40%,rgba(166,251,255,.07) 50%,transparent 60%);transform:translateX(-100%);transition:none}
+.panel:hover .glint{transform:translateX(100%);transition:transform 1.1s ease}
+.panel.scanned{border-color:var(--c);box-shadow:0 0 22px color-mix(in srgb,var(--c) 45%,transparent),inset 0 0 30px color-mix(in srgb,var(--c) 14%,transparent)}
+@keyframes pin{0%{opacity:0;clip-path:polygon(0 0,0 0,0 0,0 0,0 0,0 0)}60%{opacity:1}100%{opacity:1}}
+.pt{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+.pt .n{font-family:var(--f-head);font-size:13px;letter-spacing:.24em;color:var(--c);text-transform:uppercase;display:flex;align-items:center;gap:9px;text-shadow:0 0 8px color-mix(in srgb,var(--c) 60%,transparent)}
+.pt .n::before{content:"";width:7px;height:7px;background:var(--c);box-shadow:0 0 8px var(--c);transform:rotate(45deg)}
+.pt .tag{font-family:var(--f-mono);font-size:10px;color:var(--muted);letter-spacing:.12em;white-space:nowrap}
+.code{font-family:var(--f-mono);font-size:9px;color:rgba(109,147,166,.55);letter-spacing:.2em}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12.5px}
+.kv dt{color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-size:10px;padding-top:2px}
+.kv dd{text-align:right;font-family:var(--f-mono);color:#e8faff;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{display:inline-block;width:8px;height:8px;margin-right:6px;vertical-align:middle;border-radius:1px}
+.ring-svg{width:100%;height:100%;overflow:visible}
+.ring-num{font-family:var(--f-num);font-weight:700;font-size:24px;fill:#fff}
+.ring-unit{font-size:8.5px;fill:var(--muted);letter-spacing:.2em;font-family:var(--f-mono)}
+.ring-v{transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1),stroke .4s}
+.ring-spin{animation:spin 14s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.chart{width:100%;display:block}
+.legend{display:flex;gap:14px;font-family:var(--f-mono);font-size:10.5px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend b{color:#fff;font-weight:600}
+.btn{font-family:var(--f-text);font-weight:700;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--c);background:rgba(63,240,255,.06);border:1px solid var(--cm);padding:7px 10px;transition:.18s;white-space:nowrap}
+.btn:hover{background:rgba(63,240,255,.16);box-shadow:0 0 14px rgba(63,240,255,.35);color:#fff}
+.btn:active{transform:scale(.97)}
+.btn.g{color:var(--green);border-color:rgba(61,255,176,.5)}
+.btn.r{color:var(--red);border-color:rgba(255,61,90,.55)}
+
+/* ── шапка ── */
+#hdr{left:36px;top:18px;width:1848px;height:72px}
+.logo{position:absolute;left:0;top:0;display:flex;align-items:center;gap:16px}
+.logo svg{width:60px;height:60px;overflow:visible}
+.logo h1{font-family:var(--f-num);font-weight:900;font-size:27px;letter-spacing:.38em;color:var(--c);text-shadow:0 0 10px var(--c),0 0 28px color-mix(in srgb,var(--c) 50%,transparent)}
+.logo .sub{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.32em;color:var(--muted);margin-top:4px}
+.logo .host{font-size:11px;letter-spacing:.2em;color:var(--c2);margin-top:3px;text-transform:uppercase;opacity:.85}
+#speech{position:absolute;left:530px;top:2px;width:800px;height:66px;border:1px solid var(--cd);background:linear-gradient(90deg,rgba(63,240,255,.05),rgba(63,240,255,.015));
+  clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);display:flex;align-items:center;gap:14px;padding:0 16px}
+#speech::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:calc(var(--lvl,0)*100%);background:var(--emo);box-shadow:0 0 12px var(--emo);transition:width .08s}
+.emochip{flex:none;display:flex;flex-direction:column;align-items:center;gap:5px;width:96px}
+.emochip .orb{width:14px;height:14px;border-radius:50%;background:var(--emo);box-shadow:0 0 12px var(--emo),0 0 26px var(--emo);animation:breathe 2.6s ease-in-out infinite}
+.emochip span{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.18em;color:var(--emo);white-space:nowrap}
+@keyframes breathe{50%{transform:scale(.8);opacity:.7}}
+.saybox{flex:1;min-width:0}
+.saybox .who{font-family:var(--f-mono);font-size:9.5px;letter-spacing:.3em;color:var(--muted);display:flex;gap:10px;align-items:center}
+.saybox .who i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.saybox .who.on i{background:var(--c);box-shadow:0 0 8px var(--c);animation:breathe 1.4s infinite}
+.saybox .who.wake i{background:#fff;animation:breathe .4s infinite}
+.saybox .who.off i{background:var(--red)}
+#sayText{font-size:16px;color:#fff;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;text-shadow:0 0 12px color-mix(in srgb,var(--emo) 40%,transparent)}
+#sayText::after{content:"▌";color:var(--emo);animation:blink 1s steps(1) infinite;margin-left:2px}
+@keyframes blink{50%{opacity:0}}
+.bars{flex:none;display:flex;gap:3px;align-items:center;height:36px}
+.bars i{width:3px;height:6px;background:var(--emo);box-shadow:0 0 6px var(--emo);border-radius:2px;transition:height .07s}
+.hright{position:absolute;right:0;top:0;display:flex;align-items:flex-start;gap:20px}
+.wx{display:flex;align-items:center;gap:10px;padding-top:4px}
+.wx svg{width:34px;height:34px}
+.wx .t{font-family:var(--f-num);font-size:22px;color:#fff}
+.wx .d{font-size:10.5px;color:var(--muted);letter-spacing:.08em;max-width:120px;line-height:1.25}
+.clock{text-align:right}
+.clock .t{font-family:var(--f-num);font-size:30px;font-weight:700;color:#fff;text-shadow:0 0 12px var(--c);letter-spacing:.05em}
+.clock .d{font-size:10.5px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-top:2px}
+.ctrls{display:flex;gap:6px;padding-top:6px}
+.ib{width:36px;height:36px;border:1px solid var(--cd);background:rgba(63,240,255,.04);display:flex;align-items:center;justify-content:center;transition:.18s;position:relative}
+.ib svg{width:17px;height:17px;stroke:var(--c);fill:none;stroke-width:1.7}
+.ib:hover{border-color:var(--c);box-shadow:0 0 12px rgba(63,240,255,.35);background:rgba(63,240,255,.12)}
+.ib.off svg{stroke:var(--muted)}
+.ib.off::after{content:"";position:absolute;width:24px;height:1.6px;background:var(--red);transform:rotate(-45deg)}
+.ib[data-tip]:hover::before{content:attr(data-tip);position:absolute;top:42px;right:0;white-space:nowrap;font-size:10px;letter-spacing:.12em;
+  font-family:var(--f-mono);background:rgba(3,14,24,.95);border:1px solid var(--cd);padding:4px 8px;color:var(--c2);z-index:5}
+.talkbtn{height:36px;border:1px solid var(--cd);padding:0 10px;font-family:var(--f-mono);font-size:10px;letter-spacing:.2em;color:var(--c);background:rgba(63,240,255,.04)}
+.talkbtn:hover{border-color:var(--c)}
+#ticker{left:36px;top:100px;width:1848px;height:26px;border-top:1px solid var(--cd);border-bottom:1px solid var(--cd);overflow:hidden;
+  font-family:var(--f-mono);font-size:11.5px;color:var(--c2);display:flex;align-items:center;background:linear-gradient(90deg,rgba(63,240,255,.05),transparent 30%,transparent 70%,rgba(63,240,255,.05))}
+#ticker .lab{flex:none;padding:0 12px;color:#001;background:var(--c);height:100%;display:flex;align-items:center;font-weight:700;letter-spacing:.2em;font-size:10px}
+#ticker .run{white-space:nowrap;padding-left:100%;animation:run 50s linear infinite}
+#ticker .run span{margin-right:60px}
+#ticker .run .w{color:var(--amber)} #ticker .run .c{color:var(--red)}
+@keyframes run{to{transform:translateX(-100%)}}
+
+/* ── процессор ── */
+.cpu-top{display:flex;gap:16px;align-items:center}
+#rCpu{width:150px;height:150px;flex:none}
+.cpu-side{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.stat .k{font-size:9.5px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.stat .v{font-family:var(--f-num);font-size:19px;color:#fff;margin-top:2px}
+.stat .v small{font-size:10px;color:var(--muted);font-family:var(--f-text);margin-left:3px}
+.cores{display:flex;gap:6px;height:92px;align-items:flex-end;margin:12px 0 4px;padding:0 2px}
+.core{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%}
+.core .tube{flex:1;width:100%;border:1px solid var(--cd);position:relative;background:repeating-linear-gradient(0deg,rgba(63,240,255,.05) 0 2px,transparent 2px 6px);overflow:hidden}
+.core .tube i{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(0deg,var(--cc,var(--c)),color-mix(in srgb,var(--cc,var(--c)) 30%,transparent));box-shadow:0 0 10px var(--cc,var(--c));transition:height .6s cubic-bezier(.2,.8,.2,1)}
+.core .tube b{position:absolute;top:2px;left:0;right:0;text-align:center;font-family:var(--f-mono);font-size:8.5px;color:#fff;font-weight:400;opacity:.85}
+.core span{font-family:var(--f-mono);font-size:9px;color:var(--muted)}
+.core.p span{color:var(--c2)}
+
+/* ── списки процессов ── */
+.plist{display:flex;flex-direction:column;gap:5px}
+.prow{display:grid;grid-template-columns:18px minmax(0,1fr) 66px;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11.5px}
+.prow .ix{color:var(--muted);font-size:9.5px}
+.prow .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d8f4ff;position:relative;padding:2px 0 5px}
+.prow .nm i{position:absolute;left:0;bottom:0;height:2px;background:var(--c);box-shadow:0 0 6px var(--c);transition:width .8s}
+.prow .vl{text-align:right;color:#fff;font-weight:600}
+.prow.hot .nm i{background:var(--amber);box-shadow:0 0 6px var(--amber)} .prow.hot .vl{color:var(--amber)}
+
+/* ── реактор ── */
+#reactorZone{left:500px;top:134px;width:920px;height:520px}
+#reactor{position:absolute;left:230px;top:20px;width:460px;height:460px;cursor:var(--cursor)}
+#reactor svg,#wave{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#wave{inset:-40px;width:540px;height:540px}
+.r-slow{transform-origin:230px 230px;animation:spin 60s linear infinite reverse}
+.r-mid{transform-origin:230px 230px;animation:spin 24s linear infinite}
+.r-fast{transform-origin:230px 230px;animation:spin 9s linear infinite reverse}
+.r-coils{transform-origin:230px 230px;animation:spin 40s linear infinite}
+#reactor.overload svg{animation:shake .08s linear 14}
+@keyframes shake{25%{transform:translate(2px,-1px)}50%{transform:translate(-2px,1px)}75%{transform:translate(1px,2px)}}
+.core-txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.core-txt .sc{font-family:var(--f-num);font-weight:900;font-size:86px;line-height:1;color:#fff;text-shadow:0 0 18px var(--hc,var(--c)),0 0 40px var(--hc,var(--c))}
+.core-txt .l1{margin-top:6px;font-family:var(--f-head);font-size:12px;letter-spacing:.36em;color:var(--hc,var(--c))}
+.core-txt .l2{margin-top:4px;font-family:var(--f-mono);font-size:9px;letter-spacing:.26em;color:var(--muted)}
+.callout{position:absolute;width:190px}
+.callout .k{font-family:var(--f-head);font-size:11px;letter-spacing:.3em;color:var(--c)}
+.callout .v{font-family:var(--f-num);font-size:34px;color:#fff;font-weight:700;margin-top:2px;text-shadow:0 0 12px color-mix(in srgb,var(--c) 60%,transparent)}
+.callout .v small{font-size:13px;color:var(--muted);margin-left:4px;font-family:var(--f-text)}
+.callout .s{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+.callout .bar{height:3px;background:var(--cd);margin-top:6px;position:relative;overflow:hidden}
+.callout .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--c);box-shadow:0 0 8px var(--c);transition:width .8s}
+.callout.r{text-align:right}
+#leaders{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.emoline{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-family:var(--f-mono);font-size:10px;letter-spacing:.34em;color:var(--emo)}
+.emoline b{color:#fff;font-weight:400}
+
+/* ── журнал ── */
+#journal .msgs{height:186px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:6px;scroll-behavior:smooth}
+#journal .msgs::-webkit-scrollbar{width:3px} #journal .msgs::-webkit-scrollbar-thumb{background:var(--cm)}
+.msg{max-width:82%;padding:6px 10px 7px;font-size:13px;line-height:1.4;border-left:2px solid var(--c);background:rgba(63,240,255,.05);animation:msgin .35s ease both}
+.msg .m{font-family:var(--f-mono);font-size:9px;letter-spacing:.2em;color:var(--muted);margin-bottom:2px}
+.msg.you{align-self:flex-end;border-left:none;border-right:2px solid var(--amber);background:rgba(255,179,71,.06);text-align:right}
+.msg.you .m{color:var(--amber)}
+.msg.silent{opacity:.7}
+@keyframes msgin{from{opacity:0;transform:translateY(6px)}}
+.cmdline{display:flex;gap:8px;margin-top:9px;align-items:center}
+.cmdline .pr{font-family:var(--f-mono);color:var(--c);font-size:13px}
+#cmd{flex:1;background:rgba(63,240,255,.05);border:1px solid var(--cd);padding:8px 12px;font-family:var(--f-mono);font-size:13px;color:#fff;outline:none}
+#cmd:focus{border-color:var(--c);box-shadow:0 0 14px rgba(63,240,255,.25)}
+#cmd::placeholder{color:rgba(109,147,166,.7)}
+.chips{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.chip{font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;padding:5px 9px;border:1px solid var(--cd);color:var(--c2);background:rgba(63,240,255,.03);transition:.15s}
+.chip:hover{border-color:var(--c);color:#fff;background:rgba(63,240,255,.12)}
+
+/* ── память ── */
+.memtop{display:flex;gap:14px;align-items:center}
+#rMem{width:118px;height:118px;flex:none}
+.membar{display:flex;height:12px;border:1px solid var(--cd);background:rgba(63,240,255,.04);overflow:hidden;margin-top:10px}
+.membar div{height:100%;transition:width .8s}
+.memleg{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:8px;font-size:10.5px;font-family:var(--f-mono);color:var(--muted)}
+.memleg b{color:#e8faff;font-weight:600;float:right}
+
+/* ── диски ── */
+.dbar{height:10px;border:1px solid var(--cd);position:relative;background:rgba(63,240,255,.04);margin:6px 0 3px}
+.dbar i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 50%,#0040ff));box-shadow:0 0 8px var(--c);transition:width .8s}
+.dline{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.dline b{color:#fff;font-weight:600}
+
+/* ── сеть ── */
+.net{display:flex;gap:14px}
+#globe{width:150px;height:150px;flex:none}
+.netside{flex:1;display:flex;flex-direction:column;gap:6px}
+.rate{display:flex;align-items:baseline;gap:8px}
+.rate .a{font-family:var(--f-num);font-size:12px;width:16px}
+.rate .v{font-family:var(--f-num);font-size:18px;color:#fff}
+.vpnpill{display:flex;align-items:center;gap:8px;font-family:var(--f-head);font-size:11px;letter-spacing:.2em;padding:5px 8px;border:1px solid var(--cd)}
+.vpnpill i{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.vpnpill.on{color:var(--green);border-color:rgba(61,255,176,.4)} .vpnpill.on i{background:var(--green);box-shadow:0 0 10px var(--green);animation:breathe 2s infinite}
+.vpnpill.off{color:var(--red);border-color:rgba(255,61,90,.4)} .vpnpill.off i{background:var(--red);box-shadow:0 0 10px var(--red)}
+
+/* ── рекомендации ── */
+#recs{display:flex;flex-direction:column;gap:7px;overflow-y:auto;height:calc(100% - 30px);padding-right:4px}
+#recs::-webkit-scrollbar{width:3px} #recs::-webkit-scrollbar-thumb{background:var(--cm)}
+.rec{display:grid;grid-template-columns:20px 1fr;gap:9px;padding:8px 10px;border:1px solid var(--cd);background:rgba(63,240,255,.03);animation:msgin .5s ease both}
+.rec .ic{font-size:13px;line-height:18px;text-align:center}
+.rec h4{font-size:12.5px;font-weight:700;color:#fff;letter-spacing:.01em;line-height:1.3}
+.rec p{font-size:11.5px;line-height:1.42;color:#a9cbd9;margin-top:3px}
+.rec .act{margin-top:6px;font-size:9.5px;padding:4px 8px}
+.rec.crit{border-color:rgba(255,61,90,.6);background:rgba(255,61,90,.08);animation:msgin .5s ease both, critp 2s ease-in-out infinite}
+.rec.crit .ic{color:var(--red);text-shadow:0 0 8px var(--red)}
+@keyframes critp{50%{box-shadow:0 0 16px rgba(255,61,90,.35)}}
+.rec.warn{border-color:rgba(255,179,71,.5);background:rgba(255,179,71,.06)} .rec.warn .ic{color:var(--amber);text-shadow:0 0 8px var(--amber)}
+.rec.info .ic{color:var(--c);text-shadow:0 0 8px var(--c)}
+.rec.tip{opacity:.8} .rec.tip .ic{color:var(--violet)}
+.rec.ok{border-color:rgba(61,255,176,.45);background:rgba(61,255,176,.05)} .rec.ok .ic{color:var(--green);text-shadow:0 0 8px var(--green)}
+
+/* ── нижняя полоса ── */
+.shields{display:flex;gap:8px}
+.shield{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.shield svg{width:26px;height:26px;fill:none;stroke-width:1.6}
+.shield span{font-family:var(--f-mono);font-size:8.5px;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+.shield.on svg{stroke:var(--green);filter:drop-shadow(0 0 5px var(--green))}
+.shield.off svg{stroke:var(--amber)}
+.shield.na svg{stroke:var(--muted)}
+.devs{display:flex;flex-direction:column;gap:5px}
+.dev{display:grid;grid-template-columns:1fr 70px 34px;gap:8px;align-items:center;font-family:var(--f-mono);font-size:10.5px}
+.dev .b{height:5px;border:1px solid var(--cd);position:relative}
+.dev .b i{position:absolute;left:0;top:0;bottom:0;background:var(--green)}
+.jstats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px 10px}
+.jstats .stat .v{font-size:15px}
+.kill{display:flex;flex-direction:column;gap:6px;justify-content:center;height:100%}
+.kill-btn{position:relative;border:1px solid var(--red);background:rgba(255,61,90,.12);color:#fff;font-family:var(--f-head);font-size:12px;letter-spacing:.2em;
+  padding:9px 10px;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+  box-shadow:0 0 16px rgba(255,61,90,.4),inset 0 0 20px rgba(255,61,90,.2);text-shadow:0 0 10px var(--red);animation:redp 2.6s ease-in-out infinite;transition:.2s}
+.kill-btn:hover{background:rgba(255,61,90,.3);box-shadow:0 0 30px rgba(255,61,90,.8)}
+@keyframes redp{50%{box-shadow:0 0 26px rgba(255,61,90,.7),inset 0 0 24px rgba(255,61,90,.35)}}
+.kill .row{display:flex;gap:6px} .kill .row .btn{flex:1;font-size:9.5px;padding:5px 4px}
+
+/* ── оверлеи ── */
+.ov{position:fixed;inset:0;z-index:80;display:none}
+.ov.show{display:flex}
+#boot{z-index:100;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;gap:22px;display:flex;transition:opacity .8s}
+#boot.hide{opacity:0;pointer-events:none}
+#boot svg{width:240px;height:240px;overflow:visible}
+#boot .ring{fill:none;stroke:var(--c);stroke-linecap:round;filter:drop-shadow(0 0 6px var(--c))}
+#boot .t{font-family:var(--f-num);font-size:34px;font-weight:900;letter-spacing:.55em;color:var(--c);text-shadow:0 0 20px var(--c);margin-left:.55em}
+#boot pre{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);min-height:110px;width:420px;line-height:1.55}
+#boot .bar{width:420px;height:2px;background:var(--cd)} #boot .bar i{display:block;height:100%;width:0;background:var(--c);box-shadow:0 0 10px var(--c);transition:width .25s}
+#scanOv{pointer-events:none;z-index:70}
+#scanOv .laser{position:absolute;left:0;right:0;height:3px;background:var(--c);box-shadow:0 0 22px 6px var(--c),0 0 60px 20px color-mix(in srgb,var(--c) 40%,transparent);top:0;animation:laser 3s ease-in-out infinite}
+@keyframes laser{0%{top:0}50%{top:100%}100%{top:0}}
+#scanOv .grid{position:absolute;inset:0;background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--c) 6%,transparent) 0 1px,transparent 1px 60px),repeating-linear-gradient(0deg,color-mix(in srgb,var(--c) 6%,transparent) 0 1px,transparent 1px 60px)}
+#scanOv .box{position:absolute;right:48px;top:150px;width:330px;border:1px solid var(--c);background:rgba(2,12,20,.85);padding:16px 18px;font-family:var(--f-mono);font-size:11.5px;line-height:1.75;color:var(--c2)}
+#scanOv .box h3{font-family:var(--f-head);font-size:14px;letter-spacing:.3em;color:var(--c);margin-bottom:8px}
+#scanOv .box .p{font-family:var(--f-num);font-size:40px;color:#fff;margin:4px 0}
+#scanOv .box li{list-style:none} #scanOv .box li.ok::after{content:" ✓";color:var(--green)}
+#alertOv{pointer-events:none;z-index:75;align-items:center;justify-content:center;box-shadow:inset 0 0 220px rgba(255,0,40,.75);animation:redflash .5s steps(2) infinite}
+#alertOv div{font-family:var(--f-num);font-size:64px;font-weight:900;letter-spacing:.3em;color:var(--red);text-shadow:0 0 30px var(--red);background:rgba(20,0,5,.6);padding:16px 40px;border-top:2px solid var(--red);border-bottom:2px solid var(--red)}
+@keyframes redflash{50%{box-shadow:inset 0 0 120px rgba(255,0,40,.4)}}
+body.redalert{--c:#ff3d5a;--cd:rgba(255,61,90,.2);--cm:rgba(255,61,90,.5);--emo:#ff3d5a}
+body.party #hud{animation:hue 1.6s linear infinite}
+@keyframes hue{to{filter:hue-rotate(360deg)}}
+#fx{position:fixed;inset:0;z-index:72;pointer-events:none;width:100%;height:100%}
+#flash{position:fixed;inset:0;z-index:90;background:#fff;opacity:0;pointer-events:none;transition:opacity .5s}
+#flash.on{opacity:.85;transition:none}
+#ironman{z-index:85;pointer-events:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35)}
+#ironman svg{width:420px;height:520px;overflow:visible}
+#ironman path{fill:none;stroke:var(--gold);stroke-width:2.2;stroke-linejoin:round;filter:drop-shadow(0 0 8px var(--gold));stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 2.4s ease forwards}
+#ironman .eyes{fill:#e9fdff;stroke:none;opacity:0;animation:eyes .5s 2.2s forwards;filter:drop-shadow(0 0 12px #9ffbff)}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes eyes{to{opacity:1}}
+#toast{position:fixed;left:50%;top:140px;transform:translateX(-50%) translateY(-30px);z-index:88;opacity:0;transition:.5s cubic-bezier(.2,.8,.2,1);
+  border:1px solid var(--gold);background:linear-gradient(90deg,rgba(40,30,5,.92),rgba(20,14,2,.92));padding:12px 26px;text-align:center;box-shadow:0 0 30px rgba(255,209,102,.4);pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%)}
+#toast .a{font-family:var(--f-mono);font-size:10px;letter-spacing:.4em;color:var(--gold)}
+#toast .b{font-family:var(--f-head);font-size:18px;color:#fff;margin-top:4px;letter-spacing:.06em}
+
+/* модалки */
+.modal{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(1,5,11,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.modal.show{display:flex}
+.mbox{position:relative;border:1px solid var(--c);background:rgba(3,16,26,.94);padding:24px 26px;box-shadow:0 0 50px rgba(63,240,255,.25);animation:msgin .3s ease both;
+  clip-path:polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px))}
+.mbox h3{font-family:var(--f-head);font-size:18px;letter-spacing:.24em;color:var(--c);text-shadow:0 0 12px var(--c)}
+.mbox .x{position:absolute;right:16px;top:14px;width:30px;height:30px;border:1px solid var(--cd);background:none;color:var(--muted);font-size:16px}
+#voicelab .mbox{width:880px;max-height:92vh;overflow-y:auto}
+.vl-sec{margin-top:16px}
+.vl-sec>.k{font-family:var(--f-mono);font-size:10px;letter-spacing:.3em;color:var(--muted);margin-bottom:8px}
+.cards{display:flex;gap:8px;flex-wrap:wrap}
+.card{border:1px solid var(--cd);padding:9px 12px;min-width:140px;background:rgba(63,240,255,.03);text-align:left;transition:.15s}
+.card b{display:block;font-family:var(--f-head);font-size:13px;letter-spacing:.06em;color:#fff}
+.card span{font-size:10.5px;color:var(--muted)}
+.card:hover{border-color:var(--cm)}
+.card.sel{border-color:var(--c);background:rgba(63,240,255,.12);box-shadow:0 0 14px rgba(63,240,255,.25)}
+.slider{display:flex;align-items:center;gap:14px}
+.slider input{flex:1;accent-color:var(--c)}
+.slider .val{font-family:var(--f-num);font-size:14px;width:70px;text-align:right;color:#fff}
+.seg{display:inline-flex;border:1px solid var(--cd)}
+.seg button{background:none;border:none;padding:7px 14px;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.14em;color:var(--muted)}
+.seg button.sel{background:rgba(63,240,255,.15);color:var(--c)}
+.emos{display:flex;gap:6px;flex-wrap:wrap}
+.emos button{border:1px solid var(--cd);background:none;padding:5px 9px;font-family:var(--f-mono);font-size:10px;letter-spacing:.1em}
+.emos button.sel{border-color:currentColor;background:rgba(255,255,255,.06)}
+.vl-actions{display:flex;gap:10px;margin-top:20px}
+.vl-actions .btn{padding:11px 18px;font-size:12px}
+#vlErr{color:var(--amber);font-size:11.5px;margin-top:8px}
+#killModal .mbox{width:470px;text-align:center;border-color:var(--red);background:rgba(30,4,10,.92);box-shadow:0 0 50px rgba(255,61,90,.45)}
+#killModal h3{color:var(--red);text-shadow:0 0 12px var(--red)}
+#killModal p{font-size:13.5px;line-height:1.55;color:#e0bcc4;margin:14px 0 20px}
+.km-row{display:flex;gap:10px}
+.km-row button{flex:1;padding:12px 10px;font-family:var(--f-text);font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-size:11.5px}
+.km-yes{border:1px solid var(--red);background:rgba(255,61,90,.3);color:#fff;box-shadow:0 0 16px rgba(255,61,90,.5)}
+.km-yes:hover{background:rgba(255,61,90,.5)}
+.km-mid{border:1px solid var(--amber);background:rgba(255,179,71,.12);color:var(--amber)}
+.km-no{border:1px solid var(--cm);background:rgba(63,240,255,.06);color:var(--c)}
+#byeScreen{position:fixed;inset:0;z-index:99;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#000}
+#byeScreen.show{display:flex}
+#byeScreen .b1{font-family:var(--f-num);font-size:28px;letter-spacing:.3em;color:var(--red);text-shadow:0 0 18px var(--red)}
+#byeScreen .b2{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+#byeScreen .bc{font-family:var(--f-num);font-size:96px;color:#fff;text-shadow:0 0 30px var(--red);display:none}
+#byeScreen .bx{display:none;min-width:240px;padding:14px 18px;font-family:var(--f-text);font-weight:700;letter-spacing:.2em;text-transform:uppercase;font-size:13px}
+.offline{color:var(--red)!important}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="backdrop"></div><div class="hex"></div>
+<div class="sweep"></div><div class="vignette"></div><div class="scanlines"></div>
+
+<div id="stage"><div id="hud">
+
+  <!-- ═════ шапка ═════ -->
+  <div id="hdr" class="abs">
+    <div class="logo">
+      <svg viewBox="0 0 60 60">
+        <circle cx="30" cy="30" r="27" fill="none" stroke="var(--c)" stroke-width="1" stroke-dasharray="2 3" opacity=".7" class="r-slow" style="transform-origin:30px 30px"/>
+        <circle cx="30" cy="30" r="20" fill="none" stroke="var(--c)" stroke-width="3" stroke-dasharray="9 4" style="transform-origin:30px 30px;animation:spin 8s linear infinite"/>
+        <circle cx="30" cy="30" r="12" fill="none" stroke="var(--c2)" stroke-width="1.2"/>
+        <path d="M30 21 L38 35 L22 35 Z" fill="none" stroke="var(--c2)" stroke-width="1.6"/>
+        <circle cx="30" cy="30" r="6" fill="var(--emo)" style="filter:drop-shadow(0 0 8px var(--emo))"/>
+      </svg>
+      <div><h1>J.A.R.V.I.S.</h1><div class="sub">JUST A RATHER VERY INTELLIGENT SYSTEM</div><div class="host" id="hostline">системный монитор</div></div>
+    </div>
+    <div id="speech">
+      <div class="emochip"><i class="orb"></i><span data-emo-label>СПОКОЕН</span></div>
+      <div class="saybox">
+        <div class="who" id="vstate"><i></i><span id="vstateText">ГОЛОСОВОЙ КАНАЛ</span></div>
+        <div id="sayText">Инициализация…</div>
+      </div>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div class="hright">
+      <div class="wx" id="wx" title="Погода — клик, чтобы спросить Джарвиса"></div>
+      <div class="clock"><div class="t" id="clock">--:--:--</div><div class="d" id="date"></div></div>
+      <div class="ctrls">
+        <button class="ib" id="bMic" data-tip="Микрофон"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+        <button class="ib" id="bSnd" data-tip="Звуки интерфейса"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg></button>
+        <button class="talkbtn" id="bTalk" title="Разговорчивость">ОБЫЧНЫЙ</button>
+        <button class="ib" id="bLab" data-tip="Голосовая лаборатория"><svg viewBox="0 0 24 24"><path d="M3 12h3l2-6 3 12 3-9 2 3h5"/></svg></button>
+        <button class="ib" id="bMin" data-tip="Свернуть в виджет · Esc"><svg viewBox="0 0 24 24"><path d="M14 10l6-6M15 4h5v5M10 14l-6 6M4 15v5h5"/></svg></button>
+        <button class="ib" id="bHide" data-tip="Скрыть"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <div id="ticker" class="abs"><div class="lab">LIVE</div><div class="run" id="tickRun"><span>Подключаюсь к системе…</span></div></div>
+
+  <!-- ═════ левая колонка ═════ -->
+  <div class="panel" style="left:36px;top:134px;width:440px;height:380px;animation-delay:.05s"><div class="glint"></div>
+    <div class="pt"><span class="n">Процессор</span><span class="tag" id="cpuTag">—</span></div>
+    <div class="cpu-top">
+      <div id="rCpu"></div>
+      <div class="cpu-side">
+        <div class="stat"><div class="k">Пользователь</div><div class="v"><span id="cUser">--</span><small>%</small></div></div>
+        <div class="stat"><div class="k">Система</div><div class="v"><span id="cSys">--</span><small>%</small></div></div>
+        <div class="stat"><div class="k">Нагрузка 1/5/15</div><div class="v" id="cLoad" style="font-size:14px">—</div></div>
+        <div class="stat"><div class="k">Процессов</div><div class="v" id="cProcs">--</div></div>
+      </div>
+    </div>
+    <div class="cores" id="cores"></div>
+    <canvas class="chart" id="cpuChart" style="height:58px"></canvas>
+  </div>
+
+  <div class="panel" style="left:36px;top:526px;width:440px;height:170px;animation-delay:.12s"><div class="glint"></div>
+    <div class="pt"><span class="n">Видеоядро · термо</span><span class="tag" id="gpuTag">—</span></div>
+    <div style="display:flex;gap:14px;align-items:center">
+      <div id="rGpu" style="width:104px;height:104px;flex:none"></div>
+      <div style="flex:1;min-width:0">
+        <canvas class="chart" id="gpuChart" style="height:52px"></canvas>
+        <div class="dline" style="margin-top:8px"><span>Термо-режим</span><b id="therm">—</b></div>
+        <div class="dline" style="margin-top:3px"><span>Дисплей</span><b id="disp" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="left:36px;top:708px;width:440px;height:268px;animation-delay:.18s"><div class="glint"></div>
+    <div class="pt"><span class="n">Топ процессора</span><span class="tag">% ЯДРА</span></div>
+    <div class="plist" id="topCpu"></div>
+  </div>
+
+  <!-- ═════ центр: реактор ═════ -->
+  <div id="reactorZone" class="abs">
+    <svg id="leaders" viewBox="0 0 920 520">
+      <g stroke="var(--c)" stroke-opacity=".5" fill="none" stroke-width="1">
+        <path d="M200 92 H262 L300 130"/><path d="M720 92 H658 L620 130"/>
+        <path d="M200 392 H262 L300 354"/><path d="M720 392 H658 L620 354"/>
+      </g>
+      <g fill="var(--c)"><circle cx="300" cy="130" r="3"/><circle cx="620" cy="130" r="3"/><circle cx="300" cy="354" r="3"/><circle cx="620" cy="354" r="3"/></g>
+    </svg>
+    <div class="callout" style="left:10px;top:40px"><div class="k">ПРОЦЕССОР</div><div class="v"><span id="coCpu">--</span><small>%</small></div><div class="s" id="coCpuS">—</div><div class="bar"><i id="coCpuB"></i></div></div>
+    <div class="callout r" style="right:10px;top:40px"><div class="k">ПАМЯТЬ</div><div class="v"><span id="coMem">--</span><small>%</small></div><div class="s" id="coMemS">—</div><div class="bar"><i id="coMemB" style="right:0;left:auto"></i></div></div>
+    <div class="callout" style="left:10px;top:340px"><div class="k">ДИСК</div><div class="v"><span id="coDisk">--</span><small>ГБ</small></div><div class="s" id="coDiskS">—</div><div class="bar"><i id="coDiskB"></i></div></div>
+    <div class="callout r" style="right:10px;top:340px"><div class="k">СЕТЬ</div><div class="v" id="coNet">--</div><div class="s" id="coNetS">—</div><div class="bar"><i id="coNetB" style="right:0;left:auto"></i></div></div>
+
+    <div id="reactor" title="Не трогай реактор. Ну ладно, один раз можно.">
+      <canvas id="wave" width="1080" height="1080"></canvas>
+      <svg viewBox="0 0 460 460">
+        <defs>
+          <radialGradient id="coreG" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity=".95"/>
+            <stop offset="35%" style="stop-color:var(--emo)" stop-opacity=".75"/>
+            <stop offset="100%" style="stop-color:var(--emo)" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="haloG" cx="50%" cy="50%" r="50%">
+            <stop offset="55%" style="stop-color:var(--emo)" stop-opacity="0"/>
+            <stop offset="80%" style="stop-color:var(--emo)" stop-opacity=".16"/>
+            <stop offset="100%" style="stop-color:var(--emo)" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="arcG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a6fbff"/><stop offset="1" style="stop-color:var(--hc,#3ff0ff)"/></linearGradient>
+        </defs>
+        <circle cx="230" cy="230" r="228" fill="url(#haloG)"/>
+        <g class="r-slow"><circle cx="230" cy="230" r="222" fill="none" stroke="var(--c)" stroke-opacity=".4" stroke-width="1" stroke-dasharray="2 7"/></g>
+        <g id="rTicks"></g>
+        <circle cx="230" cy="230" r="188" fill="none" stroke="rgba(63,240,255,.09)" stroke-width="12"/>
+        <circle id="scoreArc" cx="230" cy="230" r="188" fill="none" stroke="url(#arcG)" stroke-width="12" stroke-linecap="round" transform="rotate(-90 230 230)"
+          style="transition:stroke-dashoffset 1.4s cubic-bezier(.2,.8,.2,1);filter:drop-shadow(0 0 9px var(--hc,var(--c)))"/>
+        <g class="r-mid"><circle cx="230" cy="230" r="168" fill="none" stroke="var(--c)" stroke-opacity=".55" stroke-width="3" stroke-dasharray="70 16 10 16"/></g>
+        <g class="r-fast"><circle cx="230" cy="230" r="154" fill="none" stroke="var(--c2)" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="1 8"/></g>
+        <g class="r-coils" id="coils"></g>
+        <circle cx="230" cy="230" r="104" fill="rgba(0,10,18,.82)" stroke="var(--c)" stroke-opacity=".6" stroke-width="1.2"/>
+        <g class="r-mid" style="animation-duration:18s"><path d="M230 152 L298 270 L162 270 Z" fill="none" stroke="var(--emo)" stroke-opacity=".35" stroke-width="2" stroke-linejoin="round"/></g>
+        <circle id="coreGlow" cx="230" cy="230" r="96" fill="url(#coreG)" opacity=".38"/>
+      </svg>
+      <div class="core-txt">
+        <div class="sc" id="score">--</div>
+        <div class="l1" id="scoreLbl">СКАНИРУЮ</div>
+        <div class="l2">ИНДЕКС ЗДОРОВЬЯ · ИЗ 100</div>
+      </div>
+    </div>
+    <div class="emoline">J.A.R.V.I.S. · <b data-emo-label>СПОКОЕН</b> · <span id="talkLbl">РЕЖИМ: ОБЫЧНЫЙ</span></div>
+  </div>
+
+  <div class="panel" style="left:500px;top:666px;width:920px;height:118px;animation-delay:.22s"><div class="glint"></div>
+    <div class="pt" style="margin-bottom:6px"><span class="n">Потоки данных</span>
+      <span class="legend" style="margin:0"><span><i class="dot" style="background:#3ff0ff"></i>ЦП <b id="lgCpu">—</b></span><span><i class="dot" style="background:#b98bff"></i>ГРАФИКА <b id="lgGpu">—</b></span><span><i class="dot" style="background:#ff6bd6"></i>СЕТЬ ↓ <b id="lgNet">—</b></span><span><i class="dot" style="background:#ffd166"></i>ДИСК <b id="lgDisk">—</b></span></span></div>
+    <canvas class="chart" id="flowChart" style="height:64px"></canvas>
+  </div>
+
+  <div class="panel" id="journal" style="left:500px;top:796px;width:920px;height:180px;animation-delay:.26s"><div class="glint"></div>
+    <div style="display:flex;gap:16px;height:100%">
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div class="pt" style="margin-bottom:6px"><span class="n">Журнал связи</span><span class="tag" id="jTag">—</span></div>
+        <div class="msgs" id="msgs" style="height:auto;flex:1"></div>
+      </div>
+      <div style="width:330px;flex:none;display:flex;flex-direction:column;justify-content:flex-end">
+        <div class="cmdline"><span class="pr">❯</span><input id="cmd" placeholder="Напиши Джарвису… ( / )" autocomplete="off" spellcheck="false"></div>
+        <div class="chips" id="chips">
+          <button class="chip" data-a="status">ДОКЛАД</button><button class="chip" data-a="scan">ДИАГНОСТИКА</button>
+          <button class="chip" data-a="joke">ШУТКА</button><button class="chip" data-a="fact">ФАКТ</button>
+          <button class="chip" data-a="weather">ПОГОДА</button><button class="chip" data-a="cheer">ПОДБОДРИ</button>
+          <button class="chip" data-a="party">ВЕЧЕРИНКА</button><button class="chip" data-a="screenshot">СКРИНШОТ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════ правая колонка ═════ -->
+  <div class="panel" style="left:1444px;top:134px;width:440px;height:268px;animation-delay:.08s"><div class="glint"></div>
+    <div class="pt"><span class="n">Память</span><span class="tag" id="memTag">—</span></div>
+    <div class="memtop">
+      <div id="rMem"></div>
+      <div style="flex:1;min-width:0">
+        <div class="plist" id="topMem"></div>
+      </div>
+    </div>
+    <div class="membar"><div id="mbApp" style="background:#3ff0ff;box-shadow:0 0 10px #3ff0ff"></div><div id="mbWired" style="background:#ff6bd6"></div><div id="mbComp" style="background:#ffb347"></div><div id="mbCache" style="background:rgba(63,240,255,.25)"></div></div>
+    <div class="memleg">
+      <span><i class="dot" style="background:#3ff0ff"></i>Программы <b id="mApp">—</b></span>
+      <span><i class="dot" style="background:#ff6bd6"></i>Системная <b id="mWired">—</b></span>
+      <span><i class="dot" style="background:#ffb347"></i>Сжато <b id="mComp">—</b></span>
+      <span><i class="dot" style="background:rgba(63,240,255,.35)"></i>Кэш файлов <b id="mCache">—</b></span>
+      <span>Своп <b id="mSwap">—</b></span><span>Кэши программ <b id="mCaches">—</b></span>
+    </div>
+  </div>
+
+  <div class="panel" style="left:1444px;top:414px;width:440px;height:170px;animation-delay:.14s"><div class="glint"></div>
+    <div class="pt"><span class="n">Накопители</span><span class="tag" id="diskTag">—</span></div>
+    <div class="dline"><span id="dName">Системный диск</span><b id="dFree">—</b></div>
+    <div class="dbar"><i id="dBar"></i></div>
+    <div class="dline"><span>Чтение <b id="dRead">—</b></span><span>Запись <b id="dWrite">—</b></span></div>
+    <canvas class="chart" id="diskChart" style="height:34px;margin-top:6px"></canvas>
+    <div id="vols" style="margin-top:4px"></div>
+  </div>
+
+  <div class="panel" style="left:1444px;top:596px;width:440px;height:200px;animation-delay:.2s"><div class="glint"></div>
+    <div class="pt"><span class="n">Сеть</span><span class="tag" id="netTag">—</span></div>
+    <div class="net">
+      <canvas id="globe"></canvas>
+      <div class="netside">
+        <div class="rate"><span class="a" style="color:#3ff0ff">↓</span><span class="v" id="nDown">—</span></div>
+        <div class="rate"><span class="a" style="color:#ff6bd6">↑</span><span class="v" id="nUp">—</span></div>
+        <dl class="kv" style="margin-top:2px"><dt>Пинг</dt><dd id="nPing">—</dd><dt>Адрес</dt><dd id="nIp">—</dd></dl>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:2px">
+          <div class="vpnpill" id="vpnPill"><i></i><span id="vpnWord">VPN</span></div>
+          <button class="btn g" id="vpnBtn" style="display:none">Подключить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="left:1444px;top:808px;width:440px;height:168px;animation-delay:.24s"><div class="glint"></div>
+    <div class="pt" style="margin-bottom:8px"><span class="n">Рекомендации</span><span class="tag" id="recTag">—</span></div>
+    <div id="recs"></div>
+  </div>
+
+  <!-- ═════ нижняя полоса ═════ -->
+  <div class="panel" style="left:36px;top:988px;width:400px;height:76px;padding:10px 14px;animation-delay:.3s">
+    <div class="shields" id="shields"></div>
+  </div>
+  <div class="panel" style="left:448px;top:988px;width:300px;height:76px;padding:9px 14px;animation-delay:.32s">
+    <div class="code" style="margin-bottom:5px">ПЕРИФЕРИЯ</div>
+    <div class="devs" id="devs"></div>
+  </div>
+  <div class="panel" style="left:760px;top:988px;width:420px;height:76px;padding:9px 14px;animation-delay:.34s">
+    <div class="code" style="margin-bottom:4px">ЖЕЛЕЗО</div>
+    <div style="font-family:var(--f-mono);font-size:11px;line-height:1.55;color:#cfefff" id="hw">—</div>
+  </div>
+  <div class="panel" style="left:1192px;top:988px;width:400px;height:76px;padding:9px 14px;animation-delay:.36s">
+    <div class="jstats">
+      <div class="stat"><div class="k">Сказано</div><div class="v" id="jSaid">0</div></div>
+      <div class="stat"><div class="k">Команд</div><div class="v" id="jCmds">0</div></div>
+      <div class="stat"><div class="k">Реплик</div><div class="v" id="jLines">—</div></div>
+      <div class="stat"><div class="k">Ачивки</div><div class="v" id="jAch">—</div></div>
+    </div>
+  </div>
+  <div class="panel" style="left:1604px;top:988px;width:280px;height:76px;padding:8px 12px;border-color:rgba(255,61,90,.35);animation-delay:.38s">
+    <div class="kill"><button class="kill-btn" id="killBtn">ПОСЛЕДНИЙ ЩЕЛЧОК</button></div>
+  </div>
+</div></div>
+
+<!-- ═════ оверлеи ═════ -->
+<div id="boot">
+  <svg viewBox="0 0 240 240">
+    <circle class="ring" cx="120" cy="120" r="110" stroke-width="1.5" stroke-dasharray="691" stroke-dashoffset="691" style="animation:draw 1.4s ease forwards"/>
+    <circle class="ring" cx="120" cy="120" r="88" stroke-width="5" stroke-dasharray="40 12" style="transform-origin:120px 120px;animation:spin 4s linear infinite;opacity:0;animation:spin 4s linear infinite, fadein .5s .5s forwards"/>
+    <circle class="ring" cx="120" cy="120" r="62" stroke-width="2" stroke-dasharray="390" stroke-dashoffset="390" style="animation:draw 1s .7s ease forwards"/>
+    <path class="ring" d="M120 76 L158 142 L82 142 Z" stroke-width="2.5" stroke-dasharray="230" stroke-dashoffset="230" style="animation:draw .8s 1.1s ease forwards"/>
+    <circle cx="120" cy="120" r="30" fill="var(--c)" style="opacity:0;filter:drop-shadow(0 0 22px var(--c));animation:fadein .6s 1.5s forwards"/>
+  </svg>
+  <div class="t" id="bootTitle">J.A.R.V.I.S.</div>
+  <pre id="bootlog"></pre>
+  <div class="bar"><i id="bootbar"></i></div>
+</div>
+<style>@keyframes fadein{to{opacity:1}}</style>
+
+<div class="ov" id="scanOv"><div class="grid"></div><div class="laser"></div>
+  <div class="box"><h3>ДИАГНОСТИКА</h3><div class="p" id="scanP">0%</div><ul id="scanList"></ul></div></div>
+<div class="ov" id="alertOv"><div>КРАСНАЯ ТРЕВОГА</div></div>
+<canvas id="fx"></canvas>
+<div id="flash"></div>
+<div class="ov" id="ironman"><svg viewBox="0 0 420 520">
+  <path d="M210 20 C120 20 70 80 66 170 L60 300 C60 380 110 450 160 480 L210 500 L260 480 C310 450 360 380 360 300 L354 170 C350 80 300 20 210 20 Z"/>
+  <path d="M110 230 L200 250 L195 285 L120 270 Z M310 230 L220 250 L225 285 L300 270 Z"/>
+  <path d="M150 340 L270 340 L250 420 L170 420 Z M210 60 L210 200 M130 120 C160 100 260 100 290 120"/>
+  <path class="eyes" d="M118 238 L192 254 L189 276 L124 263 Z M302 238 L228 254 L231 276 L296 263 Z"/>
+</svg></div>
+<div id="toast"><div class="a">АЧИВКА РАЗБЛОКИРОВАНА</div><div class="b" id="toastB">—</div></div>
+
+<div class="modal" id="voicelab"><div class="mbox">
+  <button class="x" id="vlClose">✕</button>
+  <h3>ГОЛОСОВАЯ ЛАБОРАТОРИЯ</h3>
+  <div style="font-size:12.5px;color:var(--muted);margin-top:6px">Нейросеть Silero работает прямо на маке. Всё применяется сразу — жми «Прослушать».</div>
+  <div class="vl-sec"><div class="k">ГОЛОС ДЖАРВИСА</div><div class="cards" id="vlSpk"></div></div>
+  <div class="vl-sec"><div class="k">ОБРАБОТКА</div><div class="cards" id="vlFx"></div></div>
+  <div class="vl-sec"><div class="k">ВЫСОТА ТОНА</div><div class="slider"><input type="range" id="vlPitch" min="-30" max="20" step="1"><span class="val" id="vlPitchV">0%</span></div></div>
+  <div class="vl-sec"><div class="k">ТЕМП</div><div class="slider"><input type="range" id="vlRate" min="75" max="125" step="1"><span class="val" id="vlRateV">100%</span></div></div>
+  <div class="vl-sec"><div class="k">ЭМОЦИЯ ДЛЯ ПРОБЫ</div><div class="emos" id="vlEmo"></div></div>
+  <div class="vl-sec"><div class="k">РАЗГОВОРЧИВОСТЬ</div>
+    <div class="seg" id="vlTalk"><button data-v="quiet">МОЛЧУН</button><button data-v="normal">ОБЫЧНЫЙ</button><button data-v="chatty">БОЛТУН</button></div>
+    <label style="margin-left:16px;font-size:12px;color:var(--muted)"><input type="checkbox" id="vlEvents" style="accent-color:var(--c)"> реагировать на события системы</label></div>
+  <div class="vl-sec"><div class="k">ГОЛОС МАРКА-0 · ВЫСОТА</div><div class="slider"><input type="range" id="vlPetPitch" min="0" max="40" step="1"><span class="val" id="vlPetPitchV">0%</span><button class="btn" id="vlPetTest">Марк</button></div></div>
+  <div class="vl-sec"><div class="k">ГОРОД ДЛЯ ПОГОДЫ</div><input id="vlCity" placeholder="по часовому поясу" style="background:rgba(63,240,255,.05);border:1px solid var(--cd);padding:8px 12px;font-family:var(--f-mono);font-size:12px;width:260px;outline:none;color:#fff"></div>
+  <div id="vlErr"></div>
+  <div class="vl-actions"><button class="btn g" id="vlTest">▶ Прослушать</button><button class="btn" id="vlReset">Сбросить</button><button class="btn" id="vlDone">Готово</button></div>
+</div></div>
+
+<div class="modal" id="killModal"><div class="mbox">
+  <h3>ЩЁЛКАЕМ?</h3>
+  <p>Все программы закроются, мак выключится. Где есть несохранённое — программа сама спросит. Пять секунд на «отмена» будет.</p>
+  <div class="km-row"><button class="km-no" id="killNo">Я передумал</button><button class="km-mid" id="killRestart">Перезагрузка</button><button class="km-yes" id="killYes">Щёлк</button></div>
+</div></div>
+<div id="byeScreen"><div class="b1">ОТКЛЮЧАЮ СИСТЕМЫ</div><div class="bc" id="byeCount">5</div><div class="b2">До связи, Кристофер.</div>
+  <button class="km-no bx" id="byeCancel">Отмена</button></div>
+
+<script src="/assets/hud.js"></script>
+<script src="/assets/theme.js"></script>
+<script>
+const { $, esc, fmtGB, fmtBytes, fmtRate, fmtUp, tween } = HUD;
+const S = HUD.sound;
+let INFO = {}, last = null, fails = 0, voiceOn = true;
+
+/* ── масштаб сцены 1920×1080 под окно + лёгкий 3D-наклон за мышью ── */
+let scale = 1, tilt = { x: 0, y: 0 };
+function fit() {
+  scale = Math.min(innerWidth / 1920, innerHeight / 1080);
+  applyT();
+}
+function applyT() { $('hud').style.transform = `scale(${scale}) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`; }
+addEventListener('resize', fit); fit();
+addEventListener('mousemove', e => {
+  tilt.x = ((e.clientX / innerWidth) - .5) * 1.6; tilt.y = -((e.clientY / innerHeight) - .5) * 1.2; applyT();
+});
+HUD.particles($('bg'), { n: 80 });
+
+/* ── часы ── */
+function clock() {
+  const n = new Date();
+  $('clock').textContent = n.toLocaleTimeString('ru-RU');
+  $('date').textContent = n.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+setInterval(clock, 1000); clock();
+
+/* ── реактор: деления, катушки, волна голоса ── */
+(function () {
+  let g = '';
+  for (let i = 0; i < 120; i++) {
+    const a = i * 3 * Math.PI / 180, long = i % 10 === 0, r1 = 200, r2 = long ? 212 : 205;
+    g += `<line x1="${230 + r1 * Math.cos(a)}" y1="${230 + r1 * Math.sin(a)}" x2="${230 + r2 * Math.cos(a)}" y2="${230 + r2 * Math.sin(a)}" stroke="var(--c)" stroke-opacity="${long ? .85 : .3}" stroke-width="${long ? 2 : 1}"/>`;
+  }
+  $('rTicks').innerHTML = g;
+  let c = '';
+  for (let i = 0; i < 10; i++) {
+    const a = i * 36;
+    c += `<g transform="rotate(${a} 230 230)"><path d="M218 92 L242 92 L238 120 L222 120 Z" fill="rgba(63,240,255,.12)" stroke="var(--c)" stroke-opacity=".75" stroke-width="1.2"/>
+      <line x1="224" y1="99" x2="236" y2="99" stroke="var(--c2)" stroke-opacity=".6"/><line x1="225" y1="106" x2="235" y2="106" stroke="var(--c2)" stroke-opacity=".6"/><line x1="226" y1="113" x2="234" y2="113" stroke="var(--c2)" stroke-opacity=".6"/></g>`;
+  }
+  $('coils').innerHTML = c;
+  const C = 2 * Math.PI * 188;
+  $('scoreArc').style.strokeDasharray = C; $('scoreArc').style.strokeDashoffset = C;
+})();
+let level = 0, levelT = 0;
+const bars = $('bars'); for (let i = 0; i < 16; i++) bars.appendChild(document.createElement('i'));
+window.jarvisLevel = v => { level = Math.max(0, Math.min(1, v)); levelT = performance.now(); };
+(function wave() {
+  const cv = $('wave'), ctx = cv.getContext('2d'), W = cv.width, cx = W / 2;
+  let smooth = 0, t = 0;
+  const N = 120, hist = new Array(N).fill(0);
+  (function frame() {
+    t += 1;
+    if (performance.now() - levelT > 400) level *= .9;
+    smooth += (level - smooth) * .35;
+    hist.push(smooth); hist.shift();
+    ctx.clearRect(0, 0, W, W);
+    const col = getComputedStyle(document.documentElement).getPropertyValue('--emo').trim() || '#3ff0ff';
+    ctx.strokeStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 12; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    for (let i = 0; i < N; i++) {
+      const a = i / N * Math.PI * 2 - Math.PI / 2;
+      const idle = (Math.sin(t / 30 + i * .5) + 1) * .02;
+      const v = Math.max(idle, hist[(i * 7) % N] * (.6 + .4 * Math.sin(i * 1.7 + t / 6)));
+      const r1 = 470, r2 = r1 + 12 + v * 70;
+      ctx.globalAlpha = .25 + v * .75;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r1, cx + Math.sin(a) * r1); ctx.lineTo(cx + Math.cos(a) * r2, cx + Math.sin(a) * r2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    $('coreGlow').setAttribute('opacity', (.32 + smooth * .6 + Math.sin(t / 40) * .04).toFixed(3));
+    $('coreGlow').setAttribute('r', (92 + smooth * 14).toFixed(1));
+    document.documentElement.style.setProperty('--lvl', smooth.toFixed(3));
+    const bs = bars.children;
+    for (let i = 0; i < bs.length; i++) bs[i].style.height = (5 + smooth * 30 * (.4 + .6 * Math.abs(Math.sin(t / 5 + i * .9)))) + 'px';
+    requestAnimationFrame(frame);
+  })();
+})();
+
+/* реактор: 5 кликов подряд — перегрузка */
+let rClicks = 0, rClickT = 0;
+$('reactor').addEventListener('click', () => {
+  const now = Date.now(); rClicks = now - rClickT < 700 ? rClicks + 1 : 1; rClickT = now;
+  S.click(); HUD.particlesBoost(.4);
+  if (rClicks >= 5) {
+    rClicks = 0; S.overload(); $('reactor').classList.add('overload'); HUD.particlesBoost(1.5);
+    setTimeout(() => $('reactor').classList.remove('overload'), 1300);
+    HUD.say(['Осторожно, реактор не игрушка. Хотя мне приятно внимание.', 'Ещё пара кликов — и мы осветим весь квартал.',
+      'Перегрузка реактора предотвращена. Дважды за сегодня, между прочим.'][Math.floor(Math.random() * 3)], 'witty');
+  }
+});
+
+/* ── кольца ── */
+HUD.ring($('rCpu'), { r: 56, sw: 7 }); HUD.ring($('rGpu'), { r: 38, sw: 6, small: true }); HUD.ring($('rMem'), { r: 42, sw: 6, small: true, unit: 'ЗАНЯТО' });
+
+/* ── ядра ── */
+let coresBuilt = 0;
+function buildCores(n, p) {
+  if (coresBuilt === n) return;
+  coresBuilt = n;
+  $('cores').innerHTML = Array.from({ length: n }, (_, i) => {
+    const isP = p && i < p, lab = p ? (isP ? 'P' + (i + 1) : 'E' + (i - p + 1)) : String(i + 1);
+    return `<div class="core ${isP ? 'p' : ''}"><div class="tube"><i></i><b></b></div><span>${lab}</span></div>`;
+  }).join('');
+}
+
+/* ── погода ── */
+const WX = {
+  sun: '<svg viewBox="0 0 34 34" fill="none" stroke="#ffd166" stroke-width="1.6"><circle cx="17" cy="17" r="6"/><path d="M17 3v4M17 27v4M3 17h4M27 17h4M7 7l3 3M24 24l3 3M27 7l-3 3M10 24l-3 3"/></svg>',
+  cloud: '<svg viewBox="0 0 34 34" fill="none" stroke="#a6fbff" stroke-width="1.6"><path d="M9 25h16a6 6 0 0 0 0-12 8 8 0 0 0-15 2 5 5 0 0 0-1 10z"/></svg>',
+  rain: '<svg viewBox="0 0 34 34" fill="none" stroke="#a6fbff" stroke-width="1.6"><path d="M9 20h16a6 6 0 0 0 0-12 8 8 0 0 0-15 2 5 5 0 0 0-1 10z"/><path d="M12 24l-2 5M18 24l-2 5M24 24l-2 5" stroke="#3ff0ff"/></svg>',
+  snow: '<svg viewBox="0 0 34 34" fill="none" stroke="#e8faff" stroke-width="1.6"><path d="M9 20h16a6 6 0 0 0 0-12 8 8 0 0 0-15 2 5 5 0 0 0-1 10z"/><path d="M12 25v4M10 27h4M20 25v4M18 27h4"/></svg>',
+};
+function renderWx(w) {
+  if (!w) { $('wx').innerHTML = ''; return; }
+  const d = (w.desc || '') + ' ' + (w.desc_en || '');
+  const ic = /снег|snow/i.test(d) ? WX.snow : /дожд|ливен|морос|rain|drizzle/i.test(d) ? WX.rain : /ясно|солн|clear|sunny/i.test(d) ? WX.sun : WX.cloud;
+  $('wx').innerHTML = `${ic}<div><div class="t">${w.temp > 0 ? '+' : ''}${w.temp}°</div><div class="d">${esc(w.desc)}<br>ощущ. ${w.feels > 0 ? '+' : ''}${w.feels}°</div></div>`;
+}
+$('wx').addEventListener('click', () => { S.click(); HUD.action('weather'); });
+
+/* ── отрисовка состояния ── */
+const ICON = { crit: '▲', warn: '◆', info: '●', tip: '◇', ok: '✓' };
+const ACT = { activity: 'Мониторинг системы', storage: 'Открыть Хранилище', vpn: 'Подключить VPN', network: 'Настройки сети',
+  firewall: 'Включить брандмауэр', filevault: 'Открыть FileVault', quit_settings: 'Закрыть Настройки' };
+const THERM = ['НОРМА', 'ТЕПЛО', 'ГОРЯЧО', 'КРИТИЧНО'];
+let lastRecs = '', lastConvo = 0, lastTicker = '';
+
+function render(s) {
+  const x = s.x || {}, J = s.jarvis || {}, hw = x.hw || {};
+  // индекс здоровья
+  const sc = s.score, hc = sc >= 80 ? '#3ff0ff' : sc >= 55 ? '#ffb347' : '#ff3d5a';
+  document.documentElement.style.setProperty('--hc', hc);
+  tween($('score'), sc);
+  $('scoreLbl').textContent = sc >= 90 ? 'ОПТИМАЛЬНО' : sc >= 80 ? 'В НОРМЕ' : sc >= 55 ? 'ВНИМАНИЕ' : 'КРИТИЧНО';
+  $('scoreArc').style.strokeDashoffset = 2 * Math.PI * 188 * (1 - sc / 100);
+  if (J.emotion && J.emotion !== HUD.emotion && performance.now() - sayT > 6000) HUD.setEmotion(J.emotion);
+
+  // процессор
+  if (s.cpu) {
+    const load = 100 - s.cpu.idle;
+    HUD.setRing($('rCpu'), load, Math.round(load), HUD.levelColor(load, 60, 85));
+    tween($('cUser'), s.cpu.user); tween($('cSys'), s.cpu.sys);
+    tween($('coCpu'), load); $('coCpuB').style.width = load + '%';
+    $('coCpuS').textContent = (hw.chip || 'ЦП') + ' · ' + (s.cores || []).length + ' ядер';
+    $('lgCpu').textContent = Math.round(load) + '%';
+  }
+  $('cLoad').textContent = x.load ? x.load.map(v => v.toFixed(1).replace('.', ',')).join(' / ') : '—';
+  $('cProcs').textContent = s.procs_count;
+  $('cpuTag').textContent = hw.p_cores ? `${hw.p_cores} P + ${hw.e_cores} E ЯДЕР` : (INFO.cores || '') + ' ЯДЕР';
+  const cores = s.cores || [];
+  if (cores.length) {
+    buildCores(cores.length, hw.p_cores);
+    [...$('cores').children].forEach((el, i) => {
+      const v = cores[i] || 0;
+      el.querySelector('i').style.height = Math.max(2, v) + '%';
+      el.style.setProperty('--cc', v >= 85 ? 'var(--red)' : v >= 60 ? 'var(--amber)' : (el.classList.contains('p') ? '#3ff0ff' : '#6fd3ff'));
+      el.querySelector('b').textContent = Math.round(v);
+    });
+  }
+  HUD.area($('cpuChart'), [{ data: s.cpu_hist, color: '#3ff0ff', fill: 'rgba(63,240,255,.25)' }], { max: 100, n: 90 });
+
+  // видеоядро и термо
+  const g = x.gpu;
+  if (g) { HUD.setRing($('rGpu'), g.util, g.util, HUD.levelColor(g.util, 70, 90)); $('lgGpu').textContent = g.util + '%'; }
+  $('gpuTag').textContent = hw.gpu_cores ? hw.gpu_cores + ' ЯДЕР ГРАФИКИ' : '—';
+  HUD.area($('gpuChart'), [{ data: x.gpu_hist || [], color: '#b98bff', fill: 'rgba(185,139,255,.22)' }], { max: 100, n: 90 });
+  const th = x.thermal;
+  $('therm').textContent = th == null ? '—' : THERM[th];
+  $('therm').style.color = th >= 2 ? 'var(--red)' : th === 1 ? 'var(--amber)' : 'var(--green)';
+  $('disp').textContent = (hw.displays || []).map(d => d.name + ' · ' + (d.res || '').replace(/ @.*/, '')).join(', ') || '—';
+
+  // топы
+  const maxC = Math.max(25, ...s.top_cpu.map(p => p.cpu));
+  $('topCpu').innerHTML = s.top_cpu.map((p, i) => `<div class="prow ${p.cpu >= 40 ? 'hot' : ''}"><span class="ix">${String(i + 1).padStart(2, '0')}</span>
+    <div class="nm" title="PID ${p.pid}">${esc(p.name)}<i style="width:${p.cpu / maxC * 100}%"></i></div><div class="vl">${p.cpu.toFixed(1).replace('.', ',')}%</div></div>`).join('');
+  const maxM = Math.max(...s.top_mem.map(p => p.mem), 1);
+  $('topMem').innerHTML = s.top_mem.slice(0, 5).map(p => `<div class="prow" style="grid-template-columns:minmax(0,1fr) 62px"><div class="nm">${esc(p.name)}${p.n > 1 ? ` <span style="color:var(--muted)">×${p.n}</span>` : ''}<i style="width:${p.mem / maxM * 100}%;background:#ff6bd6;box-shadow:0 0 6px #ff6bd6"></i></div>
+    <div class="vl">${fmtBytes(p.mem)}</div></div>`).join('');
+
+  // память
+  if (s.mem) {
+    const m = s.mem, T = m.total || 1;
+    const usedPct = m.used / T * 100;
+    const free = s.pressure_free != null ? s.pressure_free : Math.round(100 - usedPct);
+    const col = m.level >= 4 ? 'var(--red)' : m.level === 2 ? 'var(--amber)' : 'var(--c)';
+    HUD.setRing($('rMem'), usedPct, Math.round(usedPct), col);
+    tween($('coMem'), 100 - free); $('coMemB').style.width = (100 - free) + '%';
+    $('coMemS').textContent = fmtGB(m.used) + ' из ' + Math.round(T / HUD.GB) + ' ГБ · свободно ' + free + '%';
+    $('mbApp').style.width = (m.app / T * 100) + '%'; $('mbWired').style.width = (m.wired / T * 100) + '%';
+    $('mbComp').style.width = (m.compressed / T * 100) + '%';
+    $('mbCache').style.width = Math.max(0, Math.min(m.cached, T - m.used) / T * 100) + '%';
+    $('mApp').textContent = fmtGB(m.app); $('mWired').textContent = fmtGB(m.wired);
+    $('mComp').textContent = fmtGB(m.compressed); $('mCache').textContent = fmtGB(m.cached);
+    $('mSwap').textContent = m.swap ? fmtGB(m.swap) : '0';
+    $('memTag').textContent = m.level >= 4 ? 'ДАВЛЕНИЕ: КРИТИЧНО' : m.level === 2 ? 'ДАВЛЕНИЕ: ВЫСОКОЕ' : 'ДАВЛЕНИЕ: НОРМА';
+    $('memTag').style.color = m.level >= 2 ? 'var(--amber)' : '';
+  }
+  $('mCaches').textContent = s.caches != null ? fmtGB(s.caches) : 'считаю…';
+
+  // диск
+  if (s.disk) {
+    const d = s.disk, pct = d.used / d.total * 100, freeGB = d.free / 1e9;
+    $('dBar').style.width = pct + '%';
+    $('dBar').style.background = pct > 90 ? 'var(--red)' : pct > 85 ? 'var(--amber)' : '';
+    $('dFree').textContent = freeGB.toFixed(1).replace('.', ',') + ' ГБ свободно из ' + Math.round(d.total / 1e9);
+    tween($('coDisk'), freeGB, { dec: 1 }); $('coDiskB').style.width = (100 - pct) + '%';
+    $('coDiskS').textContent = 'занято ' + Math.round(pct) + '% из ' + Math.round(d.total / 1e9) + ' ГБ';
+    $('diskTag').textContent = 'ЗАНЯТО ' + Math.round(pct) + '%';
+  }
+  const io = x.disk_io;
+  $('dRead').textContent = io ? fmtRate(io.read) : '—'; $('dWrite').textContent = io ? fmtRate(io.write) : '—';
+  $('lgDisk').textContent = io ? fmtRate(io.read + io.write) : '—';
+  const dh = x.disk_hist || [];
+  HUD.area($('diskChart'), [{ data: dh.map(v => v[0]), color: '#3ff0ff', fill: 'rgba(63,240,255,.18)', width: 1.3 },
+    { data: dh.map(v => v[1]), color: '#ffd166', fill: 'rgba(255,209,102,.14)', width: 1.3 }], { grid: false, n: 90 });
+  $('vols').innerHTML = (x.volumes || []).slice(0, 2).map(v => `<div class="dline"><span>⏏ ${esc(v.name)}</span><b>${(v.free / 1e9).toFixed(0)} ГБ своб. из ${(v.total / 1e9).toFixed(0)}</b></div>`).join('');
+
+  // сеть
+  const nd = s.net.down, nu = s.net.up;
+  $('nDown').textContent = fmtRate(nd); $('nUp').textContent = fmtRate(nu);
+  $('coNet').innerHTML = fmtRate(nd).replace(/ (.+)$/, '<small>$1</small>');
+  $('coNetS').textContent = '↑ ' + fmtRate(nu) + (x.ping != null ? ' · пинг ' + Math.round(x.ping) + ' мс' : '');
+  $('coNetB').style.width = Math.min(100, Math.log10(1 + nd / 1024) / 5 * 100) + '%';
+  $('lgNet').textContent = fmtRate(nd);
+  $('nPing').textContent = x.ping != null ? x.ping.toFixed(1).replace('.', ',') + ' мс' : (x.online === false ? 'нет сети' : '—');
+  const ni = x.netinfo || {};
+  $('nIp').textContent = ni.ip || '—';
+  $('netTag').textContent = x.online === false ? 'НЕТ СВЯЗИ' : (ni.kind || '—').toUpperCase();
+  $('netTag').classList.toggle('offline', x.online === false);
+  HUD.globeActivity && HUD.globeActivity(Math.log10(1 + (nd + nu) / 1024) / 2);
+  const v = s.vpn || {};
+  $('vpnPill').className = 'vpnpill ' + (v.on ? 'on' : 'off');
+  $('vpnWord').textContent = v.on ? 'VPN · ' + (v.server || 'ЗАЩИЩЕНО').replace('⚡️', '').trim().toUpperCase() : (v.installed ? 'VPN ОТКЛЮЧЁН' : 'VPN НЕТ');
+  $('vpnBtn').style.display = v.installed && !v.on ? '' : 'none';
+
+  // потоки
+  const nh = s.net_hist.map(q => q[0]), nmax = Math.max(1, ...nh);
+  HUD.area($('flowChart'), [
+    { data: s.cpu_hist, color: '#3ff0ff', fill: 'rgba(63,240,255,.16)' },
+    { data: x.gpu_hist || [], color: '#b98bff' },
+    { data: nh.map(q => q / nmax * 100), color: '#ff6bd6', width: 1.2 },
+    { data: dh.map(q => Math.min(100, Math.log10(1 + (q[0] + q[1]) / 1024) * 20)), color: '#ffd166', width: 1.1 },
+  ], { max: 100, n: 90 });
+
+  // рекомендации
+  const warns = s.recs.filter(r => r.level === 'crit' || r.level === 'warn');
+  const key = s.recs.map(r => r.level + r.title).join('|');
+  if (key !== lastRecs) {
+    if (lastRecs && warns.length) S.alert();
+    lastRecs = key;
+    $('recs').innerHTML = s.recs.map(r => `<div class="rec ${r.level}"><div class="ic">${ICON[r.level] || '●'}</div><div><h4>${esc(r.title)}</h4><p>${esc(r.text)}</p>
+      ${r.act && ACT[r.act] ? `<button class="btn act" data-act="${r.act}">${ACT[r.act]}</button>` : ''}</div></div>`).join('');
+  }
+  $('recTag').textContent = warns.length ? warns.length + ' ' + HUD.plural(warns.length, ['ТРЕБУЕТ', 'ТРЕБУЮТ', 'ТРЕБУЮТ']) + ' ВНИМАНИЯ' : 'ВСЁ ЧИСТО';
+  $('recTag').style.color = warns.length ? 'var(--amber)' : 'var(--green)';
+
+  // бегущая строка
+  const items = [];
+  warns.forEach(r => items.push(`<span class="${r.level === 'crit' ? 'c' : 'w'}">▲ ${esc(r.title)}</span>`));
+  if (s.cpu) items.push(`<span>ЦП ${Math.round(100 - s.cpu.idle)}%</span>`);
+  if (g) items.push(`<span>ГРАФИКА ${g.util}%</span>`);
+  if (s.mem) items.push(`<span>ПАМЯТЬ: ${s.pressure_free != null ? s.pressure_free + '% свободно' : '—'}</span>`);
+  items.push(`<span>СЕТЬ ↓ ${fmtRate(nd)} ↑ ${fmtRate(nu)}</span>`);
+  if (x.weather) items.push(`<span>ЗА ОКНОМ ${x.weather.temp > 0 ? '+' : ''}${x.weather.temp}°, ${esc(x.weather.desc)}</span>`);
+  if (J.timer) items.push(`<span>ТАЙМЕР: осталось ${Math.max(0, Math.round((J.timer.end - Date.now() / 1000) / 60))} мин</span>`);
+  if (J.reminder) items.push(`<span>НАПОМИНАНИЕ ${new Date(J.reminder.at * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}: ${esc(J.reminder.text)}</span>`);
+  items.push(`<span>АПТАЙМ ${fmtUp(s.uptime)}</span>`, `<span>ИНДЕКС ЗДОРОВЬЯ ${sc}</span>`);
+  const tk = items.join('');
+  if (tk !== lastTicker) { lastTicker = tk; $('tickRun').innerHTML = tk; }
+
+  // защита
+  const sec = x.security || {};
+  const SH = [['FileVault', sec.filevault], ['Брандмауэр', sec.firewall], ['SIP', sec.sip], ['Gatekeeper', sec.gatekeeper], ['VPN', v.installed ? v.on : null]];
+  $('shields').innerHTML = SH.map(([n, on]) => `<div class="shield ${on === true ? 'on' : on === false ? 'off' : 'na'}" title="${n}: ${on === true ? 'включено' : on === false ? 'выключено' : 'нет данных'}">
+    <svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>${on === true ? '<path d="M8.5 12l2.5 2.5 4.5-5"/>' : on === false ? '<path d="M12 8v5M12 16v.5"/>' : ''}</svg><span>${n}</span></div>`).join('');
+
+  // периферия
+  const devs = x.peripherals || [];
+  $('devs').innerHTML = devs.length ? devs.slice(0, 3).map(d => `<div class="dev"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.name)}</span>
+    <div class="b"><i style="width:${d.pct}%;background:${d.pct <= 15 ? 'var(--red)' : d.pct <= 30 ? 'var(--amber)' : 'var(--green)'}"></i></div><b>${d.pct}%</b></div>`).join('')
+    : `<div style="font-family:var(--f-mono);font-size:10.5px;color:var(--muted)">Устройств с батареей не видно.${x.audio ? ' Громкость ' + (x.audio.muted ? 'выкл' : x.audio.volume + '%') : ''}</div>`;
+
+  // железо
+  $('hw').innerHTML = `${esc(hw.name || INFO.model || 'Mac')} · ${esc(hw.chip || '')} · ${hw.p_cores ? hw.p_cores + 'P+' + hw.e_cores + 'E' : (INFO.cores || '') + ' ядер'} · ${esc(hw.memory || (INFO.ram ? Math.round(INFO.ram / HUD.GB) + ' GB' : ''))}<br>
+    macOS ${esc(INFO.macos || '')} · аптайм ${fmtUp(s.uptime)}${s.battery ? ' · батарея ' + s.battery.pct + '%' : ' · питание от сети'}`;
+
+  // Джарвис
+  tween($('jSaid'), J.said_today || 0); tween($('jCmds'), J.cmds || 0);
+  $('jLines').textContent = J.lines || '—';
+  $('jAch').textContent = J.ach != null ? J.ach + '/' + J.ach_total : '—';
+  $('jTag').textContent = 'СЕГОДНЯ СКАЗАНО: ' + (J.said_today || 0);
+  setTalk(J.talk);
+
+  // журнал
+  const convo = J.convo || [];
+  const lastT = convo.length ? convo[convo.length - 1].t : 0;
+  if (lastT !== lastConvo) {
+    lastConvo = lastT;
+    $('msgs').innerHTML = convo.map(m => `<div class="msg ${m.who === 'you' ? 'you' : ''} ${m.spoken === false ? 'silent' : ''}" style="${m.who !== 'you' && m.e && HUD.EMO[m.e] ? 'border-left-color:' + HUD.EMO[m.e][0] : ''}">
+      <div class="m">${m.who === 'you' ? 'ТЫ' : 'J.A.R.V.I.S.'} · ${new Date(m.t * 1000).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${m.spoken === false ? ' · ТЕКСТОМ' : ''}</div>${esc(m.text)}</div>`).join('')
+      || '<div class="msg"><div class="m">J.A.R.V.I.S.</div>Скажи «Джарвис» или напиши сюда — я на связи.</div>';
+    $('msgs').scrollTop = 1e6;
+  }
+  renderWx(x.weather);
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  S.click();
+  const a = b.dataset.act;
+  if (a === 'vpn') { connectVpn(); return; }
+  HUD.action(a);
+});
+document.querySelectorAll('.panel').forEach(p => p.addEventListener('mouseenter', () => S.hover()));
+
+/* ── VPN ── */
+async function connectVpn() {
+  const b = $('vpnBtn'); b.textContent = 'Подключаю…'; b.disabled = true;
+  try { await fetch('/api/happ/connect', { method: 'POST' }); } catch (_) {}
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    try { const st = await HUD.get('/api/stats'); if (st.vpn && st.vpn.on) break; } catch (_) {}
+  }
+  b.textContent = 'Подключить'; b.disabled = false;
+}
+$('vpnBtn').addEventListener('click', () => { S.click(); connectVpn(); });
+
+/* ── разговорчивость ── */
+const TALK = { quiet: 'МОЛЧУН', normal: 'ОБЫЧНЫЙ', chatty: 'БОЛТУН' };
+let talk = 'normal';
+function setTalk(t) { if (!t) return; talk = t; $('bTalk').textContent = TALK[t] || t; $('talkLbl').textContent = 'РЕЖИМ: ' + (TALK[t] || t); }
+$('bTalk').addEventListener('click', async () => {
+  S.click();
+  const nx = { quiet: 'normal', normal: 'chatty', chatty: 'quiet' }[talk];
+  await HUD.post('/api/settings', { talk: nx, quiet_until: 0 });
+  setTalk(nx);
+  HUD.say({ quiet: 'Режим молчуна. Буду говорить только важное.', normal: 'Обычный режим. Говорю по делу и иногда шучу.', chatty: 'Режим болтуна! Готовься, у меня накопилось.' }[nx], nx === 'chatty' ? 'excited' : 'calm');
+});
+
+/* ── кнопки шапки ── */
+$('bSnd').addEventListener('click', () => { const on = S.toggle(); $('bSnd').classList.toggle('off', !on); });
+$('bSnd').classList.toggle('off', !S.on);
+$('bMic').addEventListener('click', () => { S.click(); voiceOn = !voiceOn; HUD.send(voiceOn ? 'voice:on' : 'voice:off'); $('bMic').classList.toggle('off', !voiceOn); });
+$('bMin').addEventListener('click', () => { S.close(); collapse(); });
+$('bHide').addEventListener('click', () => { S.close(); HUD.send('hide'); });
+$('bLab').addEventListener('click', () => { S.open(); openLab(); });
+function collapse() { if (HUD.native) { $('hud').classList.add('dematerialize'); setTimeout(() => HUD.send('collapse'), 260); } }
+window.jarvisMode = mode => {
+  if (mode === 'full') { $('hud').classList.remove('dematerialize', 'materialize'); void $('hud').offsetWidth; $('hud').classList.add('materialize'); S.open(); HUD.particlesBoost(1); }
+};
+
+/* ── командная строка ── */
+$('cmd').addEventListener('keydown', async e => {
+  if (e.key === 'Enter') {
+    const t = $('cmd').value.trim(); if (!t) return;
+    $('cmd').value = ''; S.blip();
+    const tmp = document.createElement('div'); tmp.className = 'msg you'; tmp.innerHTML = '<div class="m">ТЫ · сейчас</div>' + esc(t);
+    $('msgs').appendChild(tmp); $('msgs').scrollTop = 1e6;
+    await HUD.command(t);
+    setTimeout(poll1, 400);
+  }
+  if (e.key === 'Escape') $('cmd').blur();
+  e.stopPropagation();
+});
+$('chips').addEventListener('click', e => { const b = e.target.closest('[data-a]'); if (!b) return; S.click(); HUD.action(b.dataset.a); setTimeout(poll1, 500); });
+
+/* ── клавиатура: Esc — свернуть, / — команда, код Конами — вечеринка ── */
+const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+let kpos = 0;
+document.addEventListener('keydown', e => {
+  if (document.activeElement === $('cmd')) return;
+  if (e.key === KONAMI[kpos] || e.key.toLowerCase() === KONAMI[kpos]) { kpos++; if (kpos === KONAMI.length) { kpos = 0; HUD.action('party'); } } else kpos = 0;
+  if (e.key === '/' || (e.metaKey && e.key === 'k')) { e.preventDefault(); $('cmd').focus(); }
+  if (e.key === 'Escape') {
+    if ($('voicelab').classList.contains('show')) { $('voicelab').classList.remove('show'); return; }
+    if ($('killModal').classList.contains('show')) { $('killModal').classList.remove('show'); return; }
+    collapse();
+  }
+});
+
+/* ── голос из нативного окна ── */
+let sayT = 0;
+window.jarvisVoice = (state, text) => {
+  const w = $('vstate'); w.classList.remove('on', 'off', 'wake'); w.classList.add(state === 'off' ? 'off' : 'on');
+  $('vstateText').textContent = state === 'off' ? 'МИКРОФОН: ' + (text || 'выключен').toUpperCase().slice(0, 60) : 'СЛУШАЮ · ' + (text || '').toUpperCase().slice(0, 60);
+  voiceOn = state !== 'off'; $('bMic').classList.toggle('off', !voiceOn);
+};
+window.jarvisWake = () => {
+  const w = $('vstate'); w.classList.add('wake', 'on'); $('vstateText').textContent = 'НА СВЯЗИ · ГОВОРИ КОМАНДУ';
+  S.wake(); HUD.particlesBoost(.6);
+  clearTimeout(window._wk); window._wk = setTimeout(() => w.classList.remove('wake'), 8000);
+};
+window.jarvisSays = (t, emotion) => {
+  sayT = performance.now();
+  if (emotion) HUD.setEmotion(emotion);
+  HUD.type($('sayText'), t);
+  $('vstateText').textContent = 'ГОВОРИТ J.A.R.V.I.S.';
+  HUD.particlesBoost(.5);
+  setTimeout(poll1, 300);
+};
+window.jarvisHeard = t => { $('vstateText').textContent = 'УСЛЫШАЛ · ' + String(t).toUpperCase().slice(0, 60); };
+
+/* ── эффекты по командам ── */
+window.jarvisUI = ui => {
+  if (!ui) return;
+  if (ui.scan) runScan();
+  if (ui.scan_done) finishScan();
+  if (ui.alert) redAlert();
+  if (ui.party) party();
+  if (ui.flash) { S.shutter(); $('flash').classList.add('on'); setTimeout(() => $('flash').classList.remove('on'), 60); }
+  if (ui.ironman) ironman();
+  if (ui.achievement) toast(ui.achievement);
+  if (ui.voicelab) openLab();
+  if (ui.voice) loadLab();
+};
+
+let scanTimer = null;
+const SCAN_ITEMS = ['Процессор и ядра', 'Видеоядро', 'Оперативная память', 'Накопители', 'Сеть и VPN', 'Термо-режим', 'Защита системы', 'Процессы', 'Периферия'];
+function runScan() {
+  clearInterval(scanTimer);
+  $('scanOv').classList.add('show'); S.scan();
+  $('scanList').innerHTML = SCAN_ITEMS.map(t => `<li>${t}</li>`).join('');
+  const panels = [...document.querySelectorAll('.panel')];
+  let k = 0, t0 = Date.now();
+  scanTimer = setInterval(() => {
+    const p = Math.min(100, (Date.now() - t0) / 90);
+    $('scanP').textContent = Math.round(p) + '%';
+    const li = $('scanList').children, n = Math.floor(p / 100 * li.length);
+    for (let i = 0; i < n; i++) li[i].classList.add('ok');
+    panels.forEach(x => x.classList.remove('scanned'));
+    panels[k++ % panels.length].classList.add('scanned');
+    if (p >= 100) finishScan();
+  }, 220);
+}
+function finishScan() {
+  if (!$('scanOv').classList.contains('show')) return;
+  clearInterval(scanTimer); S.done();
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('scanned'));
+  setTimeout(() => $('scanOv').classList.remove('show'), 600);
+}
+function redAlert() {
+  document.body.classList.add('redalert'); $('alertOv').classList.add('show'); S.siren();
+  setTimeout(() => { document.body.classList.remove('redalert'); $('alertOv').classList.remove('show'); }, 4200);
+}
+function ironman() {
+  const o = $('ironman'); o.classList.remove('show'); void o.offsetWidth; o.classList.add('show'); S.boot();
+  setTimeout(() => o.classList.remove('show'), 4200);
+}
+function toast(name) { $('toastB').textContent = name; $('toast').classList.add('show'); S.achieve(); confetti(60); setTimeout(() => $('toast').classList.remove('show'), 4500); }
+
+/* частицы-конфетти для вечеринки и ачивок */
+const fx = $('fx'), fctx = fx.getContext('2d'); let parts = [], fxRun = false;
+function confetti(n) {
+  fx.width = innerWidth; fx.height = innerHeight;
+  const cols = ['#3ff0ff', '#ff6bd6', '#ffd166', '#3dffb0', '#b98bff'];
+  for (let i = 0; i < n; i++) parts.push({ x: innerWidth / 2, y: innerHeight * .45, vx: (Math.random() - .5) * 18, vy: -Math.random() * 16 - 4,
+    s: Math.random() * 6 + 3, r: Math.random() * 6, vr: (Math.random() - .5) * .3, c: cols[i % cols.length], life: 1 });
+  if (!fxRun) { fxRun = true; requestAnimationFrame(fxFrame); }
+}
+function fxFrame() {
+  fctx.clearRect(0, 0, fx.width, fx.height);
+  parts = parts.filter(p => p.life > 0);
+  for (const p of parts) {
+    p.x += p.vx; p.y += p.vy; p.vy += .35; p.vx *= .99; p.r += p.vr; p.life -= .006;
+    fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.r); fctx.globalAlpha = Math.max(0, p.life);
+    fctx.fillStyle = p.c; fctx.shadowColor = p.c; fctx.shadowBlur = 8;
+    fctx.beginPath(); for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; fctx.lineTo(Math.cos(a) * p.s, Math.sin(a) * p.s); } fctx.fill(); fctx.restore();
+  }
+  if (parts.length) requestAnimationFrame(fxFrame); else { fxRun = false; fctx.clearRect(0, 0, fx.width, fx.height); }
+}
+function party() {
+  document.body.classList.add('party'); S.party(); HUD.particlesBoost(2);
+  let n = 0; const iv = setInterval(() => { confetti(40); if (++n > 6) clearInterval(iv); }, 600);
+  setTimeout(() => document.body.classList.remove('party'), 6500);
+}
+
+/* ── голосовая лаборатория ── */
+const SAMPLE = {
+  calm: 'Все системы в норме. Реактор стабилен, можно работать.', happy: 'Отличные новости: индекс здоровья девяносто восемь!',
+  witty: 'Ещё одна вкладка браузера — и мы построим второй интернет.', concerned: 'Память на пределе. Я бы закрыл пару программ.',
+  alarmed: 'Внимание! Пропало подключение к интернету.', proud: 'Диагностика завершена. Мак в идеальной форме.',
+  excited: 'Протокол «Вечеринка» активирован!', tired: 'Глубокая ночь. Может, пора отдохнуть?',
+  curious: 'Интересно, над чем ты сейчас работаешь?', warm: 'Не забудь попить воды. Я присмотрю за системой.',
+};
+let LAB = null, labEmo = 'calm';
+async function loadLab() {
+  try { LAB = await HUD.get('/api/settings'); } catch (e) { return; }
+  const v = LAB.voice;
+  $('vlSpk').innerHTML = LAB.speakers.map(s => `<button class="card ${s.id === v.speaker ? 'sel' : ''}" data-spk="${s.id}"><b>${esc(s.name)}</b><span>${esc(s.note)}</span></button>`).join('');
+  $('vlFx').innerHTML = LAB.fx_list.map(f => `<button class="card ${f.id === v.fx ? 'sel' : ''}" data-fx="${f.id}"><b>${esc(f.name)}</b><span>${esc(f.note)}</span></button>`).join('');
+  $('vlPitch').value = v.pitch; $('vlPitchV').textContent = (v.pitch > 0 ? '+' : '') + v.pitch + '%';
+  $('vlRate').value = v.rate; $('vlRateV').textContent = v.rate + '%';
+  $('vlPetPitch').value = LAB.pet_voice.pitch; $('vlPetPitchV').textContent = '+' + LAB.pet_voice.pitch + '%';
+  $('vlEmo').innerHTML = Object.entries(HUD.EMO).map(([k, [c, n]]) => `<button data-e="${k}" class="${k === labEmo ? 'sel' : ''}" style="color:${c}">${n}</button>`).join('');
+  [...$('vlTalk').children].forEach(b => b.classList.toggle('sel', b.dataset.v === LAB.talk));
+  $('vlEvents').checked = LAB.events !== false;
+  $('vlCity').value = LAB.weather_city || '';
+  $('vlErr').textContent = LAB.voice_error ? 'Голос: ' + LAB.voice_error : '';
+}
+function openLab() { loadLab(); $('voicelab').classList.add('show'); }
+async function saveVoice(patch) { await HUD.post('/api/settings', { voice: patch }); loadLab(); }
+$('voicelab').addEventListener('click', e => {
+  const s = e.target.closest('[data-spk]'), f = e.target.closest('[data-fx]'), em = e.target.closest('[data-e]'), tk = e.target.closest('#vlTalk [data-v]');
+  if (s) { S.click(); saveVoice({ speaker: s.dataset.spk }); }
+  if (f) { S.click(); saveVoice({ fx: f.dataset.fx }); }
+  if (em) { S.click(); labEmo = em.dataset.e; HUD.setEmotion(labEmo); loadLab(); }
+  if (tk) { S.click(); HUD.post('/api/settings', { talk: tk.dataset.v, quiet_until: 0 }).then(loadLab); setTalk(tk.dataset.v); }
+  if (e.target.id === 'voicelab') $('voicelab').classList.remove('show');
+});
+$('vlPitch').addEventListener('input', e => $('vlPitchV').textContent = (e.target.value > 0 ? '+' : '') + e.target.value + '%');
+$('vlPitch').addEventListener('change', e => saveVoice({ pitch: +e.target.value }));
+$('vlRate').addEventListener('input', e => $('vlRateV').textContent = e.target.value + '%');
+$('vlRate').addEventListener('change', e => saveVoice({ rate: +e.target.value }));
+$('vlPetPitch').addEventListener('input', e => $('vlPetPitchV').textContent = '+' + e.target.value + '%');
+$('vlPetPitch').addEventListener('change', e => HUD.post('/api/settings', { pet_voice: { pitch: +e.target.value } }));
+$('vlEvents').addEventListener('change', e => HUD.post('/api/settings', { events: e.target.checked }));
+$('vlCity').addEventListener('change', e => HUD.post('/api/settings', { weather_city: e.target.value.trim() }));
+$('vlTest').addEventListener('click', () => { S.click(); HUD.say(SAMPLE[labEmo], labEmo); });
+$('vlPetTest').addEventListener('click', () => { S.click(); const a = new Audio('/api/tts_audio?kind=pet&text=' + encodeURIComponent('Марк Ноль на связи! Репульсоры заряжены, к полёту готов.')); a.play().catch(() => {}); });
+$('vlReset').addEventListener('click', async () => { S.click(); await HUD.post('/api/settings', { voice: { speaker: 'aidar', fx: 'jarvis', pitch: -10, rate: 96 } }); loadLab(); });
+$('vlDone').addEventListener('click', () => { S.close(); $('voicelab').classList.remove('show'); });
+$('vlClose').addEventListener('click', () => $('voicelab').classList.remove('show'));
+
+/* ── выключение и перезагрузка ── */
+$('killBtn').addEventListener('click', () => { S.alert(); $('killModal').classList.add('show'); });
+$('killNo').addEventListener('click', () => $('killModal').classList.remove('show'));
+$('killModal').addEventListener('click', e => { if (e.target.id === 'killModal') $('killModal').classList.remove('show'); });
+async function powerOff(kind) {
+  $('killModal').classList.remove('show');
+  if (HUD.native) { HUD.send('action:' + kind); return; }
+  $('byeScreen').classList.add('show');
+  try { const d = await HUD.post('/api/' + (kind === 'restart' ? 'restart' : 'shutdown')); if (!d.ok) throw new Error(d.error); }
+  catch (e) { $('byeScreen').querySelector('.b2').textContent = 'Не вышло. Разреши JARVIS управлять «System Events» в Настройки → Конфиденциальность → Автоматизация.'; setTimeout(() => $('byeScreen').classList.remove('show'), 6000); }
+}
+$('killYes').addEventListener('click', () => powerOff('shutdown'));
+$('killRestart').addEventListener('click', () => powerOff('restart'));
+let cdTimer = null;
+window.jarvisVoiceShutdown = kind => {
+  S.alert();
+  const b = $('byeScreen');
+  b.querySelector('.b1').textContent = kind === 'restart' ? 'ПРОТОКОЛ «ПЕРЕЗАПУСК»' : 'ПРОТОКОЛ «ЧИСТЫЙ ЛИСТ»';
+  b.querySelector('.b2').textContent = 'Скажи «отмена», если передумал';
+  $('byeCount').style.display = 'none'; $('byeCancel').style.display = 'inline-block';
+  b.classList.add('show');
+};
+window.jarvisVoiceCountdown = sec => {
+  let n = sec; $('byeCount').textContent = n; $('byeCount').style.display = 'block';
+  clearInterval(cdTimer);
+  cdTimer = setInterval(() => { n -= 1; S.tick(); if (n <= 0) clearInterval(cdTimer); $('byeCount').textContent = Math.max(n, 0); }, 1000);
+};
+window.jarvisVoiceCancel = () => { clearInterval(cdTimer); $('byeScreen').classList.remove('show'); $('byeCount').style.display = 'none'; $('byeCancel').style.display = 'none'; };
+window.jarvisVoiceBye = () => {
+  clearInterval(cdTimer);
+  const b = $('byeScreen'); b.querySelector('.b1').textContent = 'ОТКЛЮЧАЮ СИСТЕМЫ'; b.querySelector('.b2').textContent = 'До связи, Кристофер.';
+  $('byeCount').style.display = 'none'; $('byeCancel').style.display = 'none';
+};
+$('byeCancel').addEventListener('click', () => { HUD.send('cancel'); window.jarvisVoiceCancel(); });
+
+/* ── опрос ядра ── */
+async function poll1() {
+  try {
+    const s = await HUD.get('/api/stats');
+    fails = 0; last = s; render(s);
+  } catch (e) {
+    if (++fails > 1) { $('tickRun').innerHTML = '<span class="c">НЕТ СВЯЗИ С ЯДРОМ — перезапусти JARVIS</span>'; }
+  }
+}
+async function poll() { await poll1(); setTimeout(poll, 1500); }
+
+/* ── загрузка: кинематографичный старт ── */
+async function boot() {
+  let quick = false;
+  try { quick = sessionStorage.getItem('booted') === '1'; sessionStorage.setItem('booted', '1'); } catch (e) {}
+  if (quick) { $('boot').classList.add('hide'); setTimeout(() => $('boot').remove(), 900); return; }
+  HUD.scramble($('bootTitle'), 'J.A.R.V.I.S.', 1400);
+  S.boot();
+  const lines = ['> инициализация ядра…', '> нейросеть голоса: Silero v5 — онлайн', '> датчики: ядра, графика, память, диск',
+    '> сеть, VPN, периферия — на связи', '> эмоциональный модуль — калибровка', '> банк реплик загружен', '> Марк-0 — выпущен на экран', '> все системы онлайн.'];
+  const log = $('bootlog'), bar = $('bootbar');
+  for (let i = 0; i < lines.length; i++) {
+    log.textContent += lines[i] + '\n';
+    bar.style.width = ((i + 1) / lines.length * 100) + '%';
+    S.tick();
+    await new Promise(r => setTimeout(r, 210));
+  }
+  setTimeout(() => { $('boot').classList.add('hide'); $('hud').classList.add('materialize'); HUD.particlesBoost(1.2); }, 300);
+  setTimeout(() => $('boot').remove(), 1400);
+}
+
+HUD.globe($('globe'));
+HUD.setEmotion('calm');
+fetch('/api/static').then(r => r.json()).then(i => { INFO = i; $('hostline').textContent = (i.host || 'mac') + ' · macOS ' + (i.macos || ''); }).catch(() => {});
+boot(); poll();
+</script>
+</body>
+</html>
