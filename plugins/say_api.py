@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """Вебхук: другие скрипты могут говорить через JARVIS.
     ./jarvis-say "Сборка завершена"        (скрипт рядом с jarvis.py)
-или POST /api/ext/say {"text": "...", "emotion": "happy", "prio": 2} с заголовком X-Jarvis-Token."""
+или POST /api/ext/say {"text": "...", "emotion": "happy", "prio": 2} с заголовком X-Jarvis-Token.
+POST /api/ext/command {"text": "протокол вечеринка", "speak": true} выполнит команду, как будто её сказали вслух."""
 import time
 
 
@@ -26,6 +27,11 @@ def register(api):
         if not text:
             return {"error": "пустая команда"}
         r = core.clean_reply(core.text_command(text))
+        if (body or {}).get("speak") and r.get("say"):
+            # как будто команду сказали голосом: ответ звучит, эффекты и трюки Марка видны на экране
+            pet = (r.get("pet") or {}).get("cmd")
+            core.announce(r["say"], trick=pet if pet in ("flip", "salute", "dance", "spin") else None,
+                          emotion=r.get("emotion"), os_notify=False, ui=r.get("ui"))
         return {"ok": True, "reply": r.get("say", "")}
 
     api.route("POST", "/api/ext/say", say)
